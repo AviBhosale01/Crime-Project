@@ -9,6 +9,16 @@ import database
 import analytics
 import visualizations
 
+# Load security passkeys securely
+try:
+    import config_keys
+    INTEL_ENTRY_KEY = config_keys.INTEL_ENTRY_KEY
+    VIEW_DATA_KEY = config_keys.VIEW_DATA_KEY
+except ImportError:
+    import streamlit as st
+    INTEL_ENTRY_KEY = st.secrets.get("INTEL_ENTRY_KEY", "crime_pune_entry_2026")
+    VIEW_DATA_KEY = st.secrets.get("VIEW_DATA_KEY", "crime_pune_view_2026")
+
 # Set Streamlit Page Config
 st.set_page_config(
     page_title="AI-Driven Crime Analytics Platform",
@@ -153,6 +163,7 @@ nav_options = [
     "🧠 AI Predictive Models",
     "🕸️ Criminal Network Analysis",
     "📝 Intel Entry (CRUD)",
+    "📂 View Data",
     "💬 AI Intel Chatbot"
 ]
 selected_page = st.sidebar.radio("Navigation", nav_options)
@@ -963,6 +974,15 @@ elif selected_page == "📝 Intel Entry (CRUD)":
     st.markdown("## Intelligence Records Entry & Management")
     st.write("Directly interface with the SQLite databases to log crime records, register suspects, and model relationships.")
     
+    # Passkey protection
+    entered_key = st.text_input("Enter Passkey to Access Intel Entry Forms", type="password", key="intel_entry_passkey")
+    if entered_key != INTEL_ENTRY_KEY:
+        if entered_key:
+            st.error("Incorrect Passkey. Access Denied.")
+        else:
+            st.warning("Please enter the correct passkey to unlock the forms.")
+        st.stop()
+    
     tab_add_crime, tab_add_suspect, tab_add_rel = st.tabs([
         "⚠️ Report Crime Incident",
         "👤 Register New Suspect",
@@ -1074,6 +1094,500 @@ elif selected_page == "📝 Intel Entry (CRUD)":
                     database.add_connection(s_a=int(s_a), s_b=int(s_b), rel_type=rel_type, strength=int(strength))
                     st.success(f"Criminal link modeled successfully between Suspect {s_a} and Suspect {s_b}!")
                     st.cache_data.clear() # Clear streamlit cache
+
+# --- Page: View Data ---
+elif selected_page == "📂 View Data":
+    st.markdown("## 📂 Database Records Viewer & Editor")
+    st.write("Explore, search, edit, delete, and download raw tables from the Pune Crime Intelligence database.")
+    
+    # Passkey protection
+    entered_key = st.text_input("Enter Passkey to Access View Data", type="password", key="view_data_passkey")
+    if entered_key != VIEW_DATA_KEY:
+        if entered_key:
+            st.error("Incorrect Passkey. Access Denied.")
+        else:
+            st.warning("Please enter the correct passkey to unlock the database viewer.")
+        st.stop()
+        
+    st.success("Access Granted! Showing database tables.")
+    
+    # Helper exports functions
+    def export_excel(df, filename):
+        import io
+        towrite = io.BytesIO()
+        df.to_excel(towrite, index=False, engine='openpyxl')
+        towrite.seek(0)
+        return towrite.getvalue()
+        
+    def export_pdf(df, title):
+        from reportlab.lib.pagesizes import letter, landscape
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        import io
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=20, leftMargin=20, topMargin=30, bottomMargin=30)
+        story = []
+        
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'ReportTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=15,
+            textColor=colors.HexColor("#3B82F6")
+        )
+        story.append(Paragraph(title, title_style))
+        story.append(Spacer(1, 10))
+        
+        # Limit to 500 rows to avoid massive page size
+        preview_df = df.head(500)
+        data = [list(preview_df.columns)]
+        for _, row in preview_df.iterrows():
+            data.append([str(val) for val in row.values])
+            
+        col_width = (792 - 40) / len(preview_df.columns)
+        t = Table(data, colWidths=[col_width]*len(preview_df.columns))
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#111827")),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 8),
+            ('BOTTOMPADDING', (0,0), (-1,0), 6),
+            ('BACKGROUND', (0,1), (-1,-1), colors.HexColor("#f8fafc")),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
+            ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,1), (-1,-1), 7),
+        ]))
+        story.append(t)
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    def export_image(df, title):
+        import matplotlib.pyplot as plt
+        # Render top 50 rows in image for readability
+        preview_df = df.head(50)
+        fig, ax = plt.subplots(figsize=(14, len(preview_df) * 0.3 + 1.5))
+        ax.axis('tight')
+        ax.axis('off')
+        
+        table = ax.table(
+            cellText=preview_df.values,
+            colLabels=preview_df.columns,
+            loc='center',
+            cellLoc='left'
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(8)
+        table.scale(1.0, 1.3)
+        
+        for (row_idx, col_idx), cell in table.get_celld().items():
+            if row_idx == 0:
+                cell.set_text_props(weight='bold', color='white')
+                cell.set_facecolor('#111827')
+            else:
+                cell.set_facecolor('#f8fafc' if row_idx % 2 == 0 else '#ffffff')
+                
+        plt.title(f"{title} (Showing top {len(preview_df)} records)", fontsize=14, color='#111827', weight='bold', pad=20)
+        
+        import io
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+        plt.close(fig)
+        buf.seek(0)
+        return buf.getvalue()
+
+    # Load fresh datasets to display
+    conn = database.get_connection()
+    df_sus = pd.read_sql_query("SELECT * FROM suspects ORDER BY id DESC", conn)
+    # Get crimes with district names
+    df_cri = pd.read_sql_query("""
+        SELECT c.id, c.timestamp, d.name as area_name, c.crime_type, c.severity, c.latitude, c.longitude, c.status, c.suspect_id
+        FROM crimes c
+        LEFT JOIN districts d ON c.district_id = d.id
+        ORDER BY c.id DESC
+    """, conn)
+    df_con = pd.read_sql_query("SELECT suspect_a, suspect_b, relation_type, strength FROM suspect_connections", conn)
+    
+    # Map district IDs for dropdown edits
+    df_dist_choices = pd.read_sql_query("SELECT id, name FROM districts", conn)
+    conn.close()
+
+    tab_sus, tab_cri, tab_con = st.tabs([
+        "👤 Suspects Database",
+        "⚠️ Incident Log",
+        "🔗 Association Network"
+    ])
+    
+    # ------------------ Tab 1: Suspects ------------------
+    with tab_sus:
+        st.markdown("### Suspect Registry")
+        st.write("Use the table below to view, search, edit, or delete suspects. Click **Save Changes** at the bottom of the section to persist your updates to the database.")
+        
+        # Search Bar
+        search_sus = st.text_input("🔍 Search Suspects by Name, Gang, or ID", "", key="search_suspects")
+        filtered_sus = df_sus.copy()
+        if search_sus:
+            filtered_sus = filtered_sus[
+                filtered_sus['name'].str.contains(search_sus, case=False, na=False) |
+                filtered_sus['gang_affiliation'].str.contains(search_sus, case=False, na=False) |
+                filtered_sus['id'].astype(str).str.contains(search_sus, case=False, na=False)
+            ]
+            
+        # Inline editor instructions
+        st.info("💡 **Tip**: Use double-click to edit any cell. Select a row and press **Delete** or **Backspace** on your keyboard to delete it. To add a new suspect, scroll to the bottom of the table and fill in the empty row. You can use standard keyboard shortcuts like **Ctrl+Z** to undo edits before saving.")
+        
+        # Render data editor
+        edited_sus_df = st.data_editor(
+            filtered_sus,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="suspects_editor",
+            column_config={
+                "id": st.column_config.NumberColumn("ID", disabled=True),
+                "risk_score": st.column_config.NumberColumn("Risk Score (0.0 - 1.0)", min_value=0.0, max_value=1.0, step=0.01),
+                "age": st.column_config.NumberColumn("Age", min_value=12, max_value=100),
+                "priors_count": st.column_config.NumberColumn("Priors Count", min_value=0, max_value=100)
+            }
+        )
+        
+        # Undo/Redo & Save Buttons row
+        c_btn1, c_btn2, c_btn3 = st.columns([1.5, 1.5, 5])
+        with c_btn1:
+            if st.button("Reset / Undo All Edits", key="reset_suspects"):
+                st.rerun()
+        with c_btn2:
+            if st.button("Save Suspect Changes", key="save_suspects"):
+                # Handle changes
+                editor_state = st.session_state.get("suspects_editor", {})
+                
+                # Check for edits
+                if "edited_rows" in editor_state:
+                    for row_idx_str, changes in editor_state["edited_rows"].items():
+                        row_idx = int(row_idx_str)
+                        # Get ID of the record in filtered dataframe
+                        sus_id = int(filtered_sus.iloc[row_idx]["id"])
+                        name = changes.get("name", filtered_sus.iloc[row_idx]["name"])
+                        age = int(changes.get("age", filtered_sus.iloc[row_idx]["age"]))
+                        gang = changes.get("gang_affiliation", filtered_sus.iloc[row_idx]["gang_affiliation"])
+                        priors = int(changes.get("priors_count", filtered_sus.iloc[row_idx]["priors_count"]))
+                        risk = float(changes.get("risk_score", filtered_sus.iloc[row_idx]["risk_score"]))
+                        
+                        database.update_suspect_details(sus_id, name, age, gang, priors, risk)
+                        
+                # Check for additions
+                if "added_rows" in editor_state:
+                    for row in editor_state["added_rows"]:
+                        name = row.get("name", "New Suspect")
+                        age = int(row.get("age", 25))
+                        gang = row.get("gang_affiliation", "None")
+                        priors = int(row.get("priors_count", 0))
+                        # calculate risk default
+                        risk = float(np.clip((priors * 0.15) + (0.2 if gang != "None" else 0) + 0.1, 0.1, 0.95))
+                        risk = float(row.get("risk_score", risk))
+                        
+                        database.add_suspect(name, age, gang, priors, risk)
+                        
+                # Check for deletions
+                if "deleted_rows" in editor_state:
+                    for row_idx in editor_state["deleted_rows"]:
+                        sus_id = int(filtered_sus.iloc[row_idx]["id"])
+                        database.delete_suspect(sus_id)
+                        
+                st.success("Suspect changes saved successfully!")
+                st.cache_data.clear()
+                st.rerun()
+                
+        # Download panel
+        st.markdown("#### 📥 Export Suspect Data")
+        exp_col1, exp_col2, exp_col3, exp_col4 = st.columns(4)
+        with exp_col1:
+            st.download_button(
+                "CSV Export",
+                filtered_sus.to_csv(index=False).encode('utf-8'),
+                "pune_suspects.csv",
+                "text/csv",
+                key="dl_sus_csv"
+            )
+        with exp_col2:
+            st.download_button(
+                "Excel Export",
+                export_excel(filtered_sus, "pune_suspects.xlsx"),
+                "pune_suspects.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_sus_excel"
+            )
+        with exp_col3:
+            st.download_button(
+                "PDF Export",
+                export_pdf(filtered_sus, "Pune Suspects Database"),
+                "pune_suspects.pdf",
+                "application/pdf",
+                key="dl_sus_pdf"
+            )
+        with exp_col4:
+            st.download_button(
+                "Table Image (PNG)",
+                export_image(filtered_sus, "Pune Suspects Database"),
+                "pune_suspects.png",
+                "image/png",
+                key="dl_sus_png"
+            )
+
+    # ------------------ Tab 2: Incident Log ------------------
+    with tab_cri:
+        st.markdown("### Crime Incident Logs")
+        st.write("Use the table below to view, search, edit, or delete crime incidents.")
+        
+        # Search Bar
+        search_cri = st.text_input("🔍 Search Incident Log by Category, Status, Area, or ID", "", key="search_crimes")
+        filtered_cri = df_cri.copy()
+        if search_cri:
+            filtered_cri = filtered_cri[
+                filtered_cri['crime_type'].str.contains(search_cri, case=False, na=False) |
+                filtered_cri['status'].str.contains(search_cri, case=False, na=False) |
+                filtered_cri['area_name'].str.contains(search_cri, case=False, na=False) |
+                filtered_cri['id'].astype(str).str.contains(search_cri, case=False, na=False)
+            ]
+            
+        st.info("💡 **Tip**: Area Name column is for viewing. When adding/modifying crimes, type the district ID matching Pune districts: 1 (Shivajinagar), 2 (Kothrud), 3 (Viman Nagar), 4 (Hinjawadi), 5 (Koregaon Park), 6 (Hadapsar), 7 (Katraj), 8 (Swargate).")
+        
+        # Render data editor
+        edited_cri_df = st.data_editor(
+            filtered_cri,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="crimes_editor",
+            column_config={
+                "id": st.column_config.NumberColumn("ID", disabled=True),
+                "latitude": st.column_config.NumberColumn("Latitude", format="%.6f"),
+                "longitude": st.column_config.NumberColumn("Longitude", format="%.6f"),
+                "suspect_id": st.column_config.NumberColumn("Linked Suspect ID")
+            }
+        )
+        
+        # Undo/Redo & Save Buttons row
+        cc_btn1, cc_btn2, cc_btn3 = st.columns([1.5, 1.5, 5])
+        with cc_btn1:
+            if st.button("Reset / Undo All Edits", key="reset_crimes"):
+                st.rerun()
+        with cc_btn2:
+            if st.button("Save Crime Changes", key="save_crimes"):
+                editor_state = st.session_state.get("crimes_editor", {})
+                
+                # Check for edits
+                if "edited_rows" in editor_state:
+                    for row_idx_str, changes in editor_state["edited_rows"].items():
+                        row_idx = int(row_idx_str)
+                        crime_id = int(filtered_cri.iloc[row_idx]["id"])
+                        timestamp = changes.get("timestamp", filtered_cri.iloc[row_idx]["timestamp"])
+                        
+                        # Handle area renaming to district_id
+                        area_name = changes.get("area_name", filtered_cri.iloc[row_idx]["area_name"])
+                        matched_dist = df_dist_choices[df_dist_choices['name'] == area_name]
+                        if not matched_dist.empty:
+                            district_id = int(matched_dist.iloc[0]['id'])
+                        else:
+                            try:
+                                district_id = int(area_name)
+                            except ValueError:
+                                district_id = 1
+                                
+                        crime_type = changes.get("crime_type", filtered_cri.iloc[row_idx]["crime_type"])
+                        severity = changes.get("severity", filtered_cri.iloc[row_idx]["severity"])
+                        latitude = float(changes.get("latitude", filtered_cri.iloc[row_idx]["latitude"]))
+                        longitude = float(changes.get("longitude", filtered_cri.iloc[row_idx]["longitude"]))
+                        status = changes.get("status", filtered_cri.iloc[row_idx]["status"])
+                        
+                        suspect_id_val = changes.get("suspect_id", filtered_cri.iloc[row_idx]["suspect_id"])
+                        suspect_id = None if pd.isna(suspect_id_val) or suspect_id_val == "" or suspect_id_val is None else int(suspect_id_val)
+                        
+                        database.update_crime_details(crime_id, timestamp, district_id, crime_type, severity, latitude, longitude, status, suspect_id)
+                        
+                # Check for additions
+                if "added_rows" in editor_state:
+                    for row in editor_state["added_rows"]:
+                        timestamp = row.get("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        
+                        area_name = row.get("area_name", "Shivajinagar")
+                        matched_dist = df_dist_choices[df_dist_choices['name'] == area_name]
+                        if not matched_dist.empty:
+                            district_id = int(matched_dist.iloc[0]['id'])
+                        else:
+                            try:
+                                district_id = int(area_name)
+                            except ValueError:
+                                district_id = 1
+                                
+                        crime_type = row.get("crime_type", "Theft")
+                        severity = row.get("severity", "Low")
+                        latitude = float(row.get("latitude", 18.5204))
+                        longitude = float(row.get("longitude", 73.8567))
+                        status = row.get("status", "Open")
+                        
+                        suspect_id_val = row.get("suspect_id")
+                        suspect_id = None if pd.isna(suspect_id_val) or suspect_id_val == "" or suspect_id_val is None else int(suspect_id_val)
+                        
+                        database.add_crime(timestamp, district_id, crime_type, severity, latitude, longitude, status, suspect_id)
+                        
+                # Check for deletions
+                if "deleted_rows" in editor_state:
+                    for row_idx in editor_state["deleted_rows"]:
+                        crime_id = int(filtered_cri.iloc[row_idx]["id"])
+                        database.delete_crime(crime_id)
+                        
+                st.success("Crime incident changes saved successfully!")
+                st.cache_data.clear()
+                st.rerun()
+                
+        # Download panel
+        st.markdown("#### 📥 Export Incident Data")
+        exp_cri_col1, exp_cri_col2, exp_cri_col3, exp_cri_col4 = st.columns(4)
+        with exp_cri_col1:
+            st.download_button(
+                "CSV Export",
+                filtered_cri.to_csv(index=False).encode('utf-8'),
+                "pune_crimes.csv",
+                "text/csv",
+                key="dl_cri_csv"
+            )
+        with exp_cri_col2:
+            st.download_button(
+                "Excel Export",
+                export_excel(filtered_cri, "pune_crimes.xlsx"),
+                "pune_crimes.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_cri_excel"
+            )
+        with exp_cri_col3:
+            st.download_button(
+                "PDF Export",
+                export_pdf(filtered_cri, "Pune Crime Incident Logs"),
+                "pune_crimes.pdf",
+                "application/pdf",
+                key="dl_cri_pdf"
+            )
+        with exp_cri_col4:
+            st.download_button(
+                "Table Image (PNG)",
+                export_image(filtered_cri, "Pune Crime Incident Logs"),
+                "pune_crimes.png",
+                "image/png",
+                key="dl_cri_png"
+            )
+
+    # ------------------ Tab 3: Association Network ------------------
+    with tab_con:
+        st.markdown("### Suspect Connections Network")
+        st.write("Use the table below to view, search, edit, or delete criminal associations.")
+        
+        # Search Bar
+        search_con = st.text_input("🔍 Search Connections by Suspect ID or Relation Type", "", key="search_connections")
+        filtered_con = df_con.copy()
+        if search_con:
+            filtered_con = filtered_con[
+                filtered_con['relation_type'].str.contains(search_con, case=False, na=False) |
+                filtered_con['suspect_a'].astype(str).str.contains(search_con, case=False, na=False) |
+                filtered_con['suspect_b'].astype(str).str.contains(search_con, case=False, na=False)
+            ]
+            
+        st.info("💡 **Tip**: Relationship Strength ranges from 1 (weak) to 5 (extremely strong).")
+        
+        # Render data editor
+        edited_con_df = st.data_editor(
+            filtered_con,
+            num_rows="dynamic",
+            use_container_width=True,
+            key="connections_editor",
+            column_config={
+                "suspect_a": st.column_config.NumberColumn("Suspect Alpha ID"),
+                "suspect_b": st.column_config.NumberColumn("Suspect Beta ID"),
+                "strength": st.column_config.NumberColumn("Strength (1 - 5)", min_value=1, max_value=5)
+            }
+        )
+        
+        # Undo/Redo & Save Buttons row
+        con_btn1, con_btn2, con_btn3 = st.columns([1.5, 1.5, 5])
+        with con_btn1:
+            if st.button("Reset / Undo All Edits", key="reset_connections"):
+                st.rerun()
+        with con_btn2:
+            if st.button("Save Connection Changes", key="save_connections"):
+                editor_state = st.session_state.get("connections_editor", {})
+                
+                # Check for edits
+                if "edited_rows" in editor_state:
+                    for row_idx_str, changes in editor_state["edited_rows"].items():
+                        row_idx = int(row_idx_str)
+                        s_a = int(filtered_con.iloc[row_idx]["suspect_a"])
+                        s_b = int(filtered_con.iloc[row_idx]["suspect_b"])
+                        rel_type = changes.get("relation_type", filtered_con.iloc[row_idx]["relation_type"])
+                        strength = int(changes.get("strength", filtered_con.iloc[row_idx]["strength"]))
+                        
+                        database.update_connection_details(s_a, s_b, rel_type, strength)
+                        
+                # Check for additions
+                if "added_rows" in editor_state:
+                    for row in editor_state["added_rows"]:
+                        s_a_val = row.get("suspect_a")
+                        s_b_val = row.get("suspect_b")
+                        if s_a_val is not None and s_b_val is not None:
+                            s_a = int(s_a_val)
+                            s_b = int(s_b_val)
+                            rel_type = row.get("relation_type", "Accomplice")
+                            strength = int(row.get("strength", 3))
+                            
+                            database.add_connection(s_a, s_b, rel_type, strength)
+                            
+                # Check for deletions
+                if "deleted_rows" in editor_state:
+                    for row_idx in editor_state["deleted_rows"]:
+                        s_a = int(filtered_con.iloc[row_idx]["suspect_a"])
+                        s_b = int(filtered_con.iloc[row_idx]["suspect_b"])
+                        database.delete_connection(s_a, s_b)
+                        
+                st.success("Criminal network connection changes saved successfully!")
+                st.cache_data.clear()
+                st.rerun()
+                
+        # Download panel
+        st.markdown("#### 📥 Export Connection Data")
+        exp_con_col1, exp_con_col2, exp_con_col3, exp_con_col4 = st.columns(4)
+        with exp_con_col1:
+            st.download_button(
+                "CSV Export",
+                filtered_con.to_csv(index=False).encode('utf-8'),
+                "pune_connections.csv",
+                "text/csv",
+                key="dl_con_csv"
+            )
+        with exp_con_col2:
+            st.download_button(
+                "Excel Export",
+                export_excel(filtered_con, "pune_connections.xlsx"),
+                "pune_connections.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_con_excel"
+            )
+        with exp_con_col3:
+            st.download_button(
+                "PDF Export",
+                export_pdf(filtered_con, "Suspect Associates Network"),
+                "pune_connections.pdf",
+                "application/pdf",
+                key="dl_con_pdf"
+            )
+        with exp_con_col4:
+            st.download_button(
+                "Table Image (PNG)",
+                export_image(filtered_con, "Suspect Associates Network"),
+                "pune_connections.png",
+                "image/png",
+                key="dl_con_png"
+            )
 
 # --- Page 6: AI Intel Chatbot ---
 elif selected_page == "💬 AI Intel Chatbot":

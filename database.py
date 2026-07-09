@@ -509,6 +509,71 @@ def add_connection(s_a, s_b, rel_type, strength):
     VALUES (?, ?, ?, ?)
     """, (first, second, rel_type, strength))
     conn.commit()
+def update_suspect_details(suspect_id, name, age, gang_affiliation, priors_count, risk_score):
+    """Update details of an existing suspect."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    UPDATE suspects
+    SET name = ?, age = ?, gang_affiliation = ?, priors_count = ?, risk_score = ?
+    WHERE id = ?
+    """, (name, age, gang_affiliation, priors_count, risk_score, suspect_id))
+    conn.commit()
+    conn.close()
+
+def update_crime_details(crime_id, timestamp, district_id, crime_type, severity, latitude, longitude, status, suspect_id=None):
+    """Update details of an existing crime."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    UPDATE crimes
+    SET timestamp = ?, district_id = ?, crime_type = ?, severity = ?, latitude = ?, longitude = ?, status = ?, suspect_id = ?
+    WHERE id = ?
+    """, (timestamp, district_id, crime_type, severity, latitude, longitude, status, suspect_id, crime_id))
+    conn.commit()
+    conn.close()
+
+def update_connection_details(suspect_a, suspect_b, relation_type, strength):
+    """Update details of an existing connection."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    first, second = min(suspect_a, suspect_b), max(suspect_a, suspect_b)
+    cursor.execute("""
+    UPDATE suspect_connections
+    SET relation_type = ?, strength = ?
+    WHERE suspect_a = ? AND suspect_b = ?
+    """, (relation_type, strength, first, second))
+    conn.commit()
+    conn.close()
+
+def delete_suspect(suspect_id):
+    """Delete a suspect and clean up associated foreign key records."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Unlink from crimes
+    cursor.execute("UPDATE crimes SET suspect_id = NULL WHERE suspect_id = ?", (suspect_id,))
+    # Delete suspect connections
+    cursor.execute("DELETE FROM suspect_connections WHERE suspect_a = ? OR suspect_b = ?", (suspect_id, suspect_id))
+    # Delete the suspect profile
+    cursor.execute("DELETE FROM suspects WHERE id = ?", (suspect_id,))
+    conn.commit()
+    conn.close()
+
+def delete_crime(crime_id):
+    """Delete a crime incident."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM crimes WHERE id = ?", (crime_id,))
+    conn.commit()
+    conn.close()
+
+def delete_connection(s_a, s_b):
+    """Delete a relationship connection between suspects."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    first, second = min(s_a, s_b), max(s_a, s_b)
+    cursor.execute("DELETE FROM suspect_connections WHERE suspect_a = ? AND suspect_b = ?", (first, second))
+    conn.commit()
     conn.close()
 
 if __name__ == "__main__":

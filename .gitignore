@@ -19,3 +19,6 @@ env/
 
 # VS Code
 .vscode/
+
+# Security Passkeys
+config_keys.py

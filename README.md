@@ -1,29 +1,40 @@
 # 🛡️ Pune Crime Intelligence Command Center (PCICC)
 
-[![Python Version](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
-[![Streamlit App](https://img.shields.io/badge/Streamlit-v1.30+-FF4B4B.svg?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
-[![Database](https://img.shields.io/badge/SQLite-3-003B57.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org)
-[![AI/ML](https://img.shields.io/badge/Scikit--Learn-Latest-F7931E.svg?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
-[![LLM Support](https://img.shields.io/badge/Gemini%20%2F%20OpenAI-Integrated-8E44AD.svg?style=for-the-badge&logo=google-gemini&logoColor=white)](#)
-
 An advanced, premium-tier AI-powered Geospatial Analytics, Suspect Risk Profiling, and Criminal Social Network Linkage platform built specifically for **Pune, Maharashtra, India**. 
 
-Equipped with a **Text-to-SQL AI Chatbot**, the platform allows investigators to ask natural language questions, automatically queries the SQLite database, and presents smart analytics.
+Equipped with a **Universal Text-to-SQL AI Chatbot**, the platform allows investigators to ask natural language questions, automatically queries the SQLite database, and presents smart analytics using models from Gemini, OpenAI, OpenRouter, Groq, and NVIDIA NIM.
 
 ---
 
 ## 🌟 Key Features
 
 *   **📊 Command Dashboard**: Real-time KPI indicators showcasing active crime metrics, DBSCAN-generated hotspots, high-risk recidivists, and daily anomaly spikes (Z-score analysis).
-*   **🗺️ Geospatial Intelligence Map**: Plotly Mapbox maps centered on Pune showing crime distribution. Includes DBSCAN clustering layers and Kernel Density Heatmaps to isolate active crime zones.
+*   **🗺️ Geospatial Intelligence Map**: Plotly Mapbox maps centered on Pune showing crime distribution. Includes DBSCAN clustering layers and centroid markers displaying hotspot names and crime counts.
 *   **🔍 Intelligence Explorer & Search**: Search directory supporting text-filtering over **2,050 suspects** and **3,000+ crime logs**. Features a detailed **Suspect Dossier Inspector** linking biographical indicators and incident timelines.
 *   **🧠 AI Predictive Models**:
     *   *Incident Severity Predictor*: Random Forest Classifier predicting Low/Medium/High incident severity based on socio-economic and temporal factors.
     *   *Recidivism Risk Forecaster*: Random Forest Regressor predicting a repeat offender's risk index.
     *   *Socio-Economic Correlation*: Interactive Pearson correlation metrics tracking crime density vs. local poverty and unemployment.
 *   **🕸️ Criminal Network Analysis**: Interactive social link analysis of cliques and associates. Employs NetworkX centrality scores to identify associate hubs (degree centrality) and bridge figures (betweenness centrality).
-*   **📝 CRUD Intel Entry**: Clean form validation interfaces to log crime incidents, register new suspects, and model criminal connections. Saving new data automatically clears cache for instant search indexing.
-*   **💬 AI Intelligence Chatbot**: A secure conversational interface supporting Gemini & OpenAI API keys. Auto-translates English questions into SQLite code, queries the database, and summarizes results contextually.
+*   **📝 CRUD Intel Entry (Passkey Locked)**: Clean form validation interfaces to log crime incidents, register new suspects, and model criminal connections. Access is restricted using a secure password validation gate.
+*   **📂 View Data Explorer & Editor (Passkey Locked)**:
+    *   *Direct Database Management*: A full-featured editor page to view, search, add, edit, and delete suspects, crime logs, and associations.
+    *   *SQLite Synchronization*: Persist inline edits directly to SQLite. Cascading deletions automatically unlink suspect IDs from crimes and clear network connections.
+    *   *Built-in Undo/Redo & Reset*: Reset edits easily or use standard `Ctrl+Z` / `Ctrl+Y` shortcuts to revert table edits.
+*   **💬 AI Intelligence Chatbot**: A secure conversational interface supporting **Gemini, OpenAI, OpenRouter, Groq, and NVIDIA NIM**. Auto-translates English questions into SQLite code, queries the database, and summarizes results contextually.
+
+---
+
+## 🔒 Security & Access Control
+
+Access to data entry and raw database tables is restricted using secure password gates. These keys are defined in the external file `config_keys.py`:
+
+| Page / Action | Environment Key | Default Passkey |
+| :--- | :--- | :--- |
+| **📝 Intel Entry (CRUD)** | `INTEL_ENTRY_KEY` | `crime_pune_entry_2026` |
+| **📂 View Data (Explorer)** | `VIEW_DATA_KEY` | `crime_pune_view_2026` |
+
+*To change passkeys for deployment, simply edit the string constants inside `config_keys.py`.*
 
 ---
 
@@ -31,11 +42,12 @@ Equipped with a **Text-to-SQL AI Chatbot**, the platform allows investigators to
 
 *   **Frontend UI & Dashboard**: Streamlit (Premium Custom Dark Matter styling)
 *   **Data Wrangling**: Pandas, NumPy
-*   **Visualizations & Maps**: Plotly Express/GO, Folium, Mapbox
+*   **Visualizations & Maps**: Plotly Express/GO, Folium, Mapbox, Matplotlib
 *   **Machine Learning**: Scikit-Learn (Random Forests, Isolation Forest, DBSCAN)
 *   **Network Graphs**: NetworkX
 *   **Database Management**: SQLite3
-*   **AI Chatbot Engine**: Google Generative AI (`gemini-1.5-flash`), OpenAI API (`gpt-3.5-turbo`)
+*   **Exports**: `openpyxl` (Excel), `reportlab` (PDF)
+*   **AI Chatbot Engine**: Gemini, OpenAI, OpenRouter, Groq, NVIDIA NIM (NVIDIA NeMo Cloud)
 
 ---
 
@@ -71,7 +83,8 @@ Make sure all project files are placed in your working directory:
 ```bash
 📂 project-directory/
 ├── 📄 app.py              # Streamlit dashboard layout & pages
-├── 📄 database.py         # SQLite connection & database seeding
+├── 📄 database.py         # SQLite connection, seeding, & CRUD functions
+├── 📄 config_keys.py      # App security passkey configurations
 ├── 📄 analytics.py        # ML predictors & anomaly detection
 ├── 📄 visualizations.py   # Plotly charts, Mapbox maps, & NetworkX
 ├── 📄 requirements.txt    # Library dependencies
@@ -81,9 +94,9 @@ Make sure all project files are placed in your working directory:
 ### Step 2: Install Dependencies
 Open your terminal inside the project directory and run:
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt openpyxl reportlab
 ```
-*Note: This installs essential packages including `streamlit`, `scikit-learn`, `networkx`, `plotly`, `google-generativeai`, and `openai`.*
+*Note: This installs essential packages including `streamlit`, `scikit-learn`, `networkx`, `plotly`, `google-generativeai`, `openai`, `openpyxl`, and `reportlab`.*
 
 ### Step 3: Run the Application
 Start the Streamlit development server:
@@ -94,20 +107,32 @@ The server will boot up and print local URLs. The application will open automati
 
 ---
 
-## 💬 Using the AI Chatbot
+## 📥 Exporting & Downloading Data
 
-1.  Navigate to the **💬 AI Intel Chatbot** page in the left sidebar.
-2.  Choose your provider (**Gemini** or **OpenAI**).
-3.  Enter your API Key in the secure password input field and click **Save API Credentials**.
-4.  Type a question about Pune crime analytics in the chat box. E.g.:
-    *   *"How many crimes occurred in Hinjawadi in total?"*
-    *   *"Who are the top 5 highest risk suspects in the Koregaon Park Cartel?"*
-    *   *"List all incidents with High severity in Kothrud."*
-5.  The chatbot will translate your question into a SQLite query, execute it, display the query logs (collapsible expander), and explain the response.
+Under the **📂 View Data** tab, investigators can search for any record and export tables using the following buttons:
+1.  **CSV Export**: Native comma-separated values download.
+2.  **Excel Export**: Fully formatted `.xlsx` workbook sheet.
+3.  **PDF Export**: A clean, landscape-oriented document report compiled using `reportlab`.
+4.  **Table Image (PNG)**: Renders a high-resolution alternating-row preview table image using `matplotlib`.
 
 ---
 
-## 🛡️ License
+## 💬 Using the AI Chatbot
+
+1.  Navigate to the **💬 AI Intel Chatbot** page in the left sidebar.
+2.  Choose your API provider (**Gemini, OpenAI, OpenRouter, Groq, or NVIDIA NIM**).
+3.  Select a preset version or select **Custom Model** to type any specific model ID.
+4.  Enter your API Key in the secure password input field and click **Save API Credentials**.
+5.  Type a question about Pune crime analytics in the chat box. E.g.:
+    *   *"How many crimes occurred in Hinjawadi in total?"*
+    *   *"Who are the top 5 highest risk suspects in the Koregaon Park Cartel?"*
+    *   *"List all incidents with High severity in Kothrud."*
+6.  The chatbot will translate your question into a SQLite query, execute it, display the query logs (collapsible expander), and explain the response.
+
+---
+
+## 🛡️ License & Credit
 
 This project is developed for Datathon analytics and law enforcement modeling purposes. All generated suspect records are synthetic and randomized for demonstration.
-made by shreya
+
+**Made by Shreya**
