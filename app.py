@@ -1167,6 +1167,8 @@ elif selected_page == "📂 View Data":
         return buffer.getvalue()
 
     def export_image(df, title):
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         # Render top 50 rows in image for readability
         preview_df = df.head(50)
