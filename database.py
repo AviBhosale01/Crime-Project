@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 
-DB_PATH = "crime_analytics.db"
+DB_PATH = "/tmp/crime_analytics.db" if (os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SERVER_PORT")) else "crime_analytics.db"
 
 def get_connection():
     """Return a connection to the SQLite database."""
