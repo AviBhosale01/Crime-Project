@@ -503,9 +503,59 @@ def create_offender_timeline(suspect_id, crimes_df, suspect_name):
     fig.update_yaxes(categoryorder="category ascending")
     return fig
 
+def create_recidivism_gauge_chart(risk_score):
+    """
+    Generate a Plotly radial gauge dial chart for offender recidivism risk index (0.0 to 1.0).
+    Color coded: Emerald Green (Low) -> Amber (Elevated) -> Crimson (Critical).
+    """
+    val = float(np.clip(risk_score, 0.0, 1.0)) * 100.0
+    
+    if val > 65:
+        bar_color = "#EF4444"
+        risk_label = "CRITICAL / HIGH RISK"
+    elif val > 35:
+        bar_color = "#F59E0B"
+        risk_label = "ELEVATED RISK"
+    else:
+        bar_color = "#10B981"
+        risk_label = "LOW RISK"
+        
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=val,
+        number={'suffix': "%", 'font': {'size': 38, 'color': bar_color, 'family': 'Outfit, sans-serif'}},
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': f"<b>{risk_label}</b>", 'font': {'size': 14, 'color': bar_color}},
+        gauge={
+            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#4B5563", 'dtick': 20},
+            'bar': {'color': bar_color, 'thickness': 0.3},
+            'bgcolor': "rgba(17, 24, 39, 0.6)",
+            'borderwidth': 1,
+            'bordercolor': "rgba(75, 85, 99, 0.3)",
+            'steps': [
+                {'range': [0, 35], 'color': 'rgba(16, 185, 129, 0.15)'},
+                {'range': [35, 65], 'color': 'rgba(245, 158, 11, 0.15)'},
+                {'range': [65, 100], 'color': 'rgba(239, 68, 68, 0.15)'}
+            ],
+            'threshold': {
+                'line': {'color': "#EF4444", 'width': 3},
+                'thickness': 0.75,
+                'value': 65
+            }
+        }
+    ))
+    
+    fig.update_layout(
+        height=240,
+        margin=dict(l=20, r=20, t=30, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    return fig
+
 def create_anomaly_chart(daily_counts):
     """
-    Chart crime timeline with rolling stats and anomalies highlighted.
+    Chart crime timeline with 14-day rolling stats, upper 2-sigma confidence band, and Z-score anomalies.
     """
     if daily_counts.empty:
         fig = go.Figure()
@@ -513,84 +563,107 @@ def create_anomaly_chart(daily_counts):
         fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         return fig
         
+    df = daily_counts.copy()
+    # Calculate upper confidence bound (rolling mean + 2 * rolling std)
+    df['upper_bound'] = df['rolling_mean'] + (2.0 * df['rolling_std'].fillna(0))
+    
     fig = go.Figure()
     
-    # 1. Plot crime count line
+    # 1. Shaded confidence band (Upper threshold limit)
     fig.add_trace(go.Scatter(
-        x=daily_counts['date'],
-        y=daily_counts['crime_count'],
+        x=df['date'],
+        y=df['upper_bound'],
         mode='lines',
-        name='Daily Crimes',
-        line=dict(color='#3B82F6', width=1.5)
+        name='2-Sigma Anomaly Limit',
+        line=dict(color='rgba(239, 68, 68, 0.4)', width=1, dash='dot'),
+        fill=None
     ))
     
-    # 2. Plot rolling mean
+    # 2. Plot daily crime count line
     fig.add_trace(go.Scatter(
-        x=daily_counts['date'],
-        y=daily_counts['rolling_mean'],
+        x=df['date'],
+        y=df['crime_count'],
         mode='lines',
-        name='14-Day Rolling Avg',
-        line=dict(color='#10B981', width=1.2, dash='dash')
+        name='Daily Crime Frequency',
+        line=dict(color='#3B82F6', width=2)
     ))
     
-    # 3. Highlight Z-Score anomalies (rolling threshold exceeded)
-    anomalies = daily_counts[daily_counts['is_anomaly'] == True]
+    # 3. Plot 14-day rolling average
     fig.add_trace(go.Scatter(
-        x=anomalies['date'],
-        y=anomalies['crime_count'],
-        mode='markers',
-        name='Trend Alerts (Anomaly)',
-        marker=dict(color='#EF4444', size=8, symbol='circle')
+        x=df['date'],
+        y=df['rolling_mean'],
+        mode='lines',
+        name='14-Day Rolling Baseline',
+        line=dict(color='#10B981', width=1.8, dash='dash')
     ))
     
+    # 4. Highlight Z-Score anomalies (rolling threshold exceeded)
+    anomalies = df[df['is_anomaly'] == True].copy()
+    if not anomalies.empty:
+        anomalies['hover_txt'] = anomalies.apply(
+            lambda r: f"🚨 <b>Crime Spike Detected</b><br>📅 Date: {r['date'].strftime('%Y-%m-%d')}<br>📊 Crimes: <b>{r['crime_count']}</b> (Expected: {r['rolling_mean']:.1f})<br>⚡ Z-Score: <b>+{r['z_score']:.2f} σ</b>",
+            axis=1
+        )
+        fig.add_trace(go.Scatter(
+            x=anomalies['date'],
+            y=anomalies['crime_count'],
+            mode='markers',
+            name='Statistical Anomaly Alert (Z > 2.0)',
+            marker=dict(color='#EF4444', size=11, symbol='diamond', line=dict(color='#FFFFFF', width=1.5)),
+            text=anomalies['hover_txt'],
+            hovertemplate="%{text}<extra></extra>"
+        ))
+        
     fig.update_layout(
-        title="<b>Crime Frequency Trend & Anomaly Alerts (z-score > 2.0)</b>",
-        xaxis_title="Date",
-        yaxis_title="Daily Crime Count",
+        title="<b>Daily Crime Frequency & Statistical Anomaly Spikes (Z-Score > 2.0)</b>",
+        xaxis_title="Timeline Date",
+        yaxis_title="Daily Crime Incidents Count",
         hovermode="x unified",
         margin=dict(l=20, r=20, t=50, b=20),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, bgcolor="rgba(17, 24, 39, 0.8)"),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)"
     )
     return fig
 
 def create_correlation_heatmap(corr_df):
-    """Heatmap showing socio-economic correlation coefficients."""
+    """Correlation Bar/Heatmap with exact Pearson coefficients and p-values."""
     if corr_df.empty:
         fig = go.Figure()
         fig.add_annotation(text="No Correlation Data", showarrow=False)
         fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         return fig
         
-    # Standardize names for display
-    corr_df = corr_df.copy()
-    corr_df['Feature Name'] = corr_df['feature'].str.replace('_', ' ').str.title()
+    df = corr_df.copy()
+    df['Feature Name'] = df['feature'].str.replace('_', ' ').str.title()
+    df['text_label'] = df.apply(lambda r: f"r = {r['pearson_r']:+.2f} (p={r['p_value']:.3f})", axis=1)
     
     fig = px.bar(
-        corr_df,
+        df,
         x='pearson_r',
         y='Feature Name',
         orientation='h',
         color='pearson_r',
-        color_continuous_scale='RdBu',
+        color_continuous_scale='Purples',
+        text='text_label',
         range_color=[-1, 1],
-        labels={'pearson_r': 'Pearson Correlation (r)', 'Feature Name': 'Socio-economic Indicator'},
-        title="Socio-economic Correlation to Total Crimes"
+        labels={'pearson_r': 'Pearson Correlation (r)', 'Feature Name': 'Socio-economic Factor'},
+        title="<b>Socio-Economic Factors Correlation to Local Crime Density</b>"
     )
     
+    fig.update_traces(textposition='outside')
     fig.update_layout(
         margin=dict(l=20, r=20, t=40, b=20),
-        coloraxis_showscale=True,
+        coloraxis_showscale=False,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        height=300
+        height=320
     )
     fig.update_yaxes(categoryorder="total ascending")
     return fig
 
 def create_correlation_scatter(crimes_df, districts_df, feature):
-    """Scatter plot showing crimes vs a specific feature across districts with a trendline."""
+    """Scatter plot with OLS trendline regression between a district socio-economic feature and crime frequency."""
     if crimes_df.empty or districts_df.empty:
         fig = go.Figure()
         fig.add_annotation(text="No Data Available", showarrow=False)
@@ -608,11 +681,12 @@ def create_correlation_scatter(crimes_df, districts_df, feature):
         y='total_crimes',
         text='name',
         trendline='ols',
-        labels={feature: feat_title, 'total_crimes': 'Total Crime Count'},
-        title=f"Correlation: {feat_title} vs. Crime Frequency"
+        hover_data={'name': True, feature: ':.2f', 'total_crimes': True, 'population_density': True},
+        labels={feature: feat_title, 'total_crimes': 'Total Crime Incidents Logged'},
+        title=f"<b>OLS Trendline: {feat_title} vs. Crime Frequency</b>"
     )
     
-    fig.update_traces(textposition='top center', marker=dict(size=12, color='#10B981'))
+    fig.update_traces(textposition='top center', marker=dict(size=14, color='#10B981', line=dict(width=1.5, color='#FFFFFF')))
     fig.update_layout(
         margin=dict(l=20, r=20, t=40, b=20),
         paper_bgcolor="rgba(0,0,0,0)",

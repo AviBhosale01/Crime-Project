@@ -724,7 +724,8 @@ elif selected_page == "🔍 Search & Explorer":
 
 # --- Page 3: AI Predictive Models ---
 elif selected_page == "🧠 AI Predictive Models":
-    st.markdown("## AI/ML Forecasting & Statistical Insights")
+    st.markdown("## AI/ML Forecasting & Police Intelligence Insights")
+    st.write("Machine learning predictive intelligence suite for police commanders: forecast incident severity, assess suspect recidivism risk, evaluate socio-economic crime drivers, and detect temporal anomaly surges.")
     
     tab_predict, tab_suspect, tab_socio, tab_anomaly = st.tabs([
         "🔮 Incident Risk Prediction",
@@ -746,22 +747,20 @@ elif selected_page == "🧠 AI Predictive Models":
             
             with col_in1:
                 st.markdown("#### Input Incident Conditions")
-                in_district = st.selectbox("Incident Area / Location", district_names)
-                in_type = st.selectbox("Crime Type", crime_types_list)
-                in_hour = st.slider("Hour of Day", 0, 23, 12)
-                in_day = st.selectbox("Day of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+                in_district = st.selectbox("Incident Area / Location", district_names, key="pred_district_sel")
+                in_type = st.selectbox("Crime Category", crime_types_list, key="pred_type_sel")
+                in_hour = st.slider("Hour of Day (24h Clock)", 0, 23, 12, key="pred_hour_slider")
+                in_day = st.selectbox("Day of Week", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], key="pred_day_sel")
                 
-                # Convert day of week to integer
                 day_map = {"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
                 day_idx = day_map[in_day]
                 
-                # Fetch socio-economics of selected district
                 dist_row = df_districts[df_districts['name'] == in_district].iloc[0]
                 
-                predict_btn = st.button("Calculate Severity Risk")
+                predict_btn = st.button("Calculate Severity Risk", key="btn_calc_severity")
                 
             with col_in2:
-                st.markdown("#### Prediction Output")
+                st.markdown("#### Prediction Output & Tactical Advisory")
                 if predict_btn:
                     input_data = {
                         "district_name": in_district,
@@ -777,28 +776,37 @@ elif selected_page == "🧠 AI Predictive Models":
                     
                     pred_class, class_probs = analytics.predict_incident_severity(model_dict, input_data)
                     
-                    # Highlight Class Card
                     color_map = {"Low": "#10B981", "Medium": "#F59E0B", "High": "#EF4444"}
                     bg_color = color_map[pred_class]
                     
                     st.markdown(
-                        f"""<div style="background-color: {bg_color}; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
-                            <h4 style="margin: 0; text-transform: uppercase;">Predicted Severity: {pred_class}</h4>
+                        f"""<div style="background-color: {bg_color}; color: white; padding: 18px; border-radius: 10px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                            <div style="font-size: 0.85rem; text-transform: uppercase; font-weight: 600; opacity: 0.9;">Predicted Severity Classification</div>
+                            <h3 style="margin: 5px 0 0 0; text-transform: uppercase; font-size: 1.8rem; font-weight: 800;">{pred_class} SEVERITY</h3>
                         </div>""", unsafe_allow_html=True
                     )
                     
                     # Probabilities breakdown
-                    st.write("**Prediction Probabilities:**")
+                    st.write("**Model Confidence Breakdown:**")
                     for cls, prob in class_probs.items():
-                        st.progress(float(prob), text=f"{cls} Severity: {prob*100:.1f}%")
+                        st.progress(float(prob), text=f"{cls} Severity Probability: {prob*100:.1f}%")
+                        
+                    # Tactical Advisory
+                    st.markdown("---")
+                    st.markdown("##### 🛡️ Tactical Police Advisory")
+                    if pred_class == "High":
+                        st.error("🚨 **HIGH SEVERITY DIRECTIVE**: Dispatch Mobile Patrol (PCR) Van immediately. Alert Station House Officer (SHO) and Divisional ACP. Monitor local CCTV feeds in real time.")
+                    elif pred_class == "Medium":
+                        st.warning("🟡 **MEDIUM SEVERITY DIRECTIVE**: Increase beat constable patrolling in the sector. Schedule random vehicle nakabandi checks during specified hour range.")
+                    else:
+                        st.success("🟢 **ROUTINE DIRECTIVE**: Log incident entry and assign standard beat constable coverage.")
                         
             st.markdown("<br><hr style='border-top: 1px solid rgba(75, 85, 99, 0.2);'>", unsafe_allow_html=True)
-            st.markdown("#### Random Forest Feature Importance")
-            st.write("Understand what factors drive crime severity prediction the most:")
-            # Display feature importance bar chart
+            st.markdown("#### Random Forest Feature Importance Analysis")
+            st.write("Identify top spatio-temporal and socio-economic variables influencing severity prediction:")
+            
             feat_imp = model_dict['feature_importance'].head(8).reset_index()
             feat_imp.columns = ['Feature', 'Importance']
-            # formatting feature names
             feat_imp['Feature'] = feat_imp['Feature'].str.replace('dist_', 'District: ').str.replace('type_', 'Type: ').str.replace('_', ' ').str.title()
             
             fig_imp = px.bar(feat_imp, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Purples')
@@ -812,44 +820,43 @@ elif selected_page == "🧠 AI Predictive Models":
     # Tab 2: Suspect Recidivism Prediction
     with tab_suspect:
         st.markdown("### Suspect Recidivism Risk Forecaster")
-        st.write("Analyze a suspect's demographic and arrest logs dynamically using a Random Forest Regressor to compute a **Recidivism Risk Score**.")
+        st.write("Analyze a suspect's demographic and arrest logs dynamically using a Random Forest Regressor to compute a **Recidivism Risk Index**.")
         
         sus_model_dict, sus_msg = analytics.train_recidivism_predictor(df_suspects)
         
         if sus_model_dict:
-            col_sus1, col_sus2 = st.columns(2)
+            col_sus1, col_sus2 = st.columns([1, 1.2])
             with col_sus1:
-                st.markdown("#### Suspect Profile")
-                s_age = st.slider("Suspect Age", 18, 90, 30)
-                s_priors = st.number_input("Prior Offenses (Arrests)", min_value=0, max_value=50, value=2)
-                s_gang = st.selectbox("Gang Affiliation Status", ["None", "Pune Local Boys", "Shivaji Nagar Syndicate", "Koregaon Park Cartel", "Hinjawadi Hackers", "D-Company Gang", "Chhota Rajan Gang"])
+                st.markdown("#### Input Suspect Profile")
+                s_age = st.slider("Suspect Age", 18, 90, 30, key="sus_age_slider")
+                s_priors = st.number_input("Prior Offenses (Arrests)", min_value=0, max_value=50, value=2, key="sus_priors_input")
+                s_gang = st.selectbox("Gang Affiliation Status", ["None", "Pune Local Boys", "Shivaji Nagar Syndicate", "Koregaon Park Cartel", "Hinjawadi Hackers", "D-Company Gang", "Chhota Rajan Gang"], key="sus_gang_sel")
                 
-                calc_sus = st.button("Evaluate Recidivism Risk")
+                calc_sus = st.button("Evaluate Recidivism Risk Index", key="btn_eval_recidivism")
                 
             with col_sus2:
-                st.markdown("#### Evaluated Risk Output")
+                st.markdown("#### Evaluated Risk Gauge & Police Directive")
                 if calc_sus:
                     pred_risk = analytics.predict_suspect_risk(sus_model_dict, s_age, s_priors, s_gang)
                     
+                    # Render Radial Gauge Chart
+                    fig_gauge = visualizations.create_recidivism_gauge_chart(pred_risk)
+                    st.plotly_chart(fig_gauge, use_container_width=True)
+                    
+                    # Calculate percentile in Pune suspect pool
+                    higher_count = len(df_suspects[df_suspects['risk_score'] > pred_risk])
+                    total_sus = len(df_suspects)
+                    pct = (higher_count / total_sus) * 100.0
+                    st.caption(f"📊 **Database Percentile**: This profile risks higher than **{100.0 - pct:.1f}%** of suspects in the Pune Crime Registry.")
+                    
+                    # Police Action Directive Box
+                    st.markdown("##### 👮 Police Actionable Directive")
                     if pred_risk > 0.65:
-                        badge_color = "#ef4444"
-                        level = "CRITICAL / HIGH RISK"
+                        st.error("🚨 **CRITICAL SURVEILLANCE DIRECTIVE**: High Recidivist Risk Index (> 0.65). List under History-Sheeter Register, initiate electronic & physical surveillance, and evaluate CrPC Sec 110 preventive action.")
                     elif pred_risk > 0.35:
-                        badge_color = "#f59e0b"
-                        level = "ELEVATED RISK"
+                        st.warning("🟡 **ELEVATED MONITORING DIRECTIVE**: Moderate Recidivist Risk Index (0.35 - 0.65). Require bi-weekly Police Station Attendance roll-call and verify local employment.")
                     else:
-                        badge_color = "#10b981"
-                        level = "LOW RISK"
-                        
-                    st.markdown(
-                        f"""<div style="border: 2px solid {badge_color}; background-color: rgba(17, 24, 39, 0.7); padding: 25px; border-radius: 12px; text-align: center;">
-                            <div style="font-size: 0.9rem; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Calculated Risk Index</div>
-                            <div style="font-size: 3rem; font-weight: 800; color: {badge_color}; margin: 10px 0;">{pred_risk:.2f}</div>
-                            <div style="background-color: {badge_color}; color: #ffffff; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; display: inline-block; text-transform: uppercase;">
-                                {level}
-                            </div>
-                        </div>""", unsafe_allow_html=True
-                    )
+                        st.success("🟢 **ROUTINE RECORD DIRECTIVE**: Low Recidivist Risk Index (< 0.35). Maintain standard station records; no active surveillance required.")
         else:
             st.warning(sus_msg)
             
@@ -857,6 +864,10 @@ elif selected_page == "🧠 AI Predictive Models":
     with tab_socio:
         st.markdown("### Socio-Economic Correlation Matrix")
         st.write("Examine correlations between a district's socio-economic profiles and the total occurrences of crimes in those locations.")
+        
+        st.markdown("""
+        > 💡 **Police Intelligence Briefing**: Socio-economic indicators provide empirical data for beat allocation. Areas with high poverty or unemployment indices show elevated property crime frequencies, supporting targeted community policing interventions.
+        """)
         
         corr_df = analytics.calculate_socioeconomic_correlations(df_crimes, df_districts)
         
@@ -866,10 +877,9 @@ elif selected_page == "🧠 AI Predictive Models":
                 fig_heatmap = visualizations.create_correlation_heatmap(corr_df)
                 st.plotly_chart(fig_heatmap, use_container_width=True)
             with col_sc2:
-                # Select a variable to plot linear regression
                 feat_opt = corr_df['feature'].tolist()
                 feat_labels = {f: f.replace('_', ' ').title() for f in feat_opt}
-                sel_feat = st.selectbox("Select Variable for Trendline Regression", feat_opt, format_func=lambda x: feat_labels[x])
+                sel_feat = st.selectbox("Select Variable for Trendline Regression", feat_opt, format_func=lambda x: feat_labels[x], key="sel_corr_feat")
                 
                 fig_scatter = visualizations.create_correlation_scatter(df_crimes, df_districts, sel_feat)
                 st.plotly_chart(fig_scatter, use_container_width=True)
@@ -886,6 +896,26 @@ elif selected_page == "🧠 AI Predictive Models":
         if not daily_stats.empty:
             fig_anomaly = visualizations.create_anomaly_chart(daily_stats)
             st.plotly_chart(fig_anomaly, use_container_width=True)
+            
+            # Anomaly Surge Log Table for Police Commanders
+            anomalies_only = daily_stats[daily_stats['is_anomaly'] == True].sort_values(by='date', ascending=False)
+            if not anomalies_only.empty:
+                st.markdown("#### 🚨 Historical Crime Anomaly Surge Register")
+                st.dataframe(
+                    anomalies_only[['date', 'crime_count', 'rolling_mean', 'z_score']].rename(
+                        columns={
+                            'date': 'Anomaly Date',
+                            'crime_count': 'Actual Incident Count',
+                            'rolling_mean': 'Expected 14-Day Baseline',
+                            'z_score': 'Statistical Z-Score (σ)'
+                        }
+                    ).assign(
+                        **{'Anomaly Date': lambda x: pd.to_datetime(x['Anomaly Date']).dt.strftime('%Y-%m-%d'),
+                           'Statistical Z-Score (σ)': lambda x: x['Statistical Z-Score (σ)'].map('{:+.2f} σ'.format)}
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
         else:
             st.info("No historical trends to show.")
 
