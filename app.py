@@ -300,7 +300,7 @@ if selected_page == "📊 Command Dashboard":
                     paper_bgcolor="rgba(0,0,0,0)",
                     legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5)
                 )
-                st.plotly_chart(fig_pie, use_container_width=True)
+                st.plotly_chart(fig_pie, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             else:
                 st.info("No crime data fits the selected filters.")
                 
@@ -323,7 +323,7 @@ if selected_page == "📊 Command Dashboard":
                     plot_bgcolor="rgba(0,0,0,0)",
                     coloraxis_showscale=False
                 )
-                st.plotly_chart(fig_bar, use_container_width=True)
+                st.plotly_chart(fig_bar, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             else:
                 st.info("No crime data fits the selected filters.")
                 
@@ -430,7 +430,7 @@ if selected_page == "📊 Command Dashboard":
                 plot_bgcolor="rgba(0,0,0,0)",
                 legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
             )
-            st.plotly_chart(fig_cog, use_container_width=True)
+            st.plotly_chart(fig_cog, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
         with row1_col2:
             st.markdown("#### Violent Crime Category Trends (2021–2025)")
@@ -452,7 +452,7 @@ if selected_page == "📊 Command Dashboard":
                 plot_bgcolor="rgba(0,0,0,0)",
                 legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
             )
-            st.plotly_chart(fig_violent, use_container_width=True)
+            st.plotly_chart(fig_violent, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
         # Row 2: Cybercrime & Social Crimes
         row2_col1, row2_col2 = st.columns(2)
@@ -470,7 +470,7 @@ if selected_page == "📊 Command Dashboard":
                 plot_bgcolor="rgba(0,0,0,0)"
             )
             fig_cyber.update_traces(textposition='outside')
-            st.plotly_chart(fig_cyber, use_container_width=True)
+            st.plotly_chart(fig_cyber, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             
         with row2_col2:
             st.markdown("#### Vulnerable Demographics Trends")
@@ -489,7 +489,7 @@ if selected_page == "📊 Command Dashboard":
                 plot_bgcolor="rgba(0,0,0,0)",
                 legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
             )
-            st.plotly_chart(fig_vuln, use_container_width=True)
+            st.plotly_chart(fig_vuln, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
         st.markdown("<hr style='border-top: 1px solid rgba(0, 173, 181, 0.2);'>", unsafe_allow_html=True)
         
@@ -521,7 +521,7 @@ if selected_page == "📊 Command Dashboard":
                 plot_bgcolor="rgba(0,0,0,0)",
                 coloraxis_showscale=False
             )
-            st.plotly_chart(fig_pcpc, use_container_width=True)
+            st.plotly_chart(fig_pcpc, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             
         with pc_col2:
             st.markdown("#### Preventive & Legal Actions (PCPC 2025)")
@@ -573,7 +573,7 @@ elif selected_page == "🗺️ Geospatial Intelligence":
             selected_id = int(sel_hs.split()[-1])
             
         map_fig = visualizations.create_geospatial_map(df_geo, show_hotspots=True, selected_hotspot_id=selected_id)
-        st.plotly_chart(map_fig, use_container_width=True)
+        st.plotly_chart(map_fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
         
         # Hotspot Details Table
         if len(active_ids) > 0:
@@ -594,11 +594,11 @@ elif selected_page == "🗺️ Geospatial Intelligence":
             
     elif map_type == "Kernel Density Heatmap":
         density_fig = visualizations.create_density_map(df_crimes)
-        st.plotly_chart(density_fig, use_container_width=True)
+        st.plotly_chart(density_fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
         
     else: # Standard scatter map
         scatter_fig = visualizations.create_geospatial_map(df_crimes, show_hotspots=False)
-        st.plotly_chart(scatter_fig, use_container_width=True)
+        st.plotly_chart(scatter_fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
 # --- Page 2.5: Search & Explorer ---
 elif selected_page == "🔍 Search & Explorer":
@@ -678,7 +678,7 @@ elif selected_page == "🔍 Search & Explorer":
                     """, unsafe_allow_html=True)
                 with det_col2:
                     timeline_fig = visualizations.create_offender_timeline(selected_inspect_id, df_crimes, s_data['name'])
-                    st.plotly_chart(timeline_fig, use_container_width=True)
+                    st.plotly_chart(timeline_fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
 
         else:
             st.info("No suspects match your search query and filters.")
@@ -816,7 +816,7 @@ elif selected_page == "🧠 AI Predictive Models":
             fig_imp = px.bar(feat_imp, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Purples')
             fig_imp.update_layout(height=280, margin=dict(l=20, r=20, t=10, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", coloraxis_showscale=False)
             fig_imp.update_yaxes(categoryorder="total ascending")
-            st.plotly_chart(fig_imp, use_container_width=True)
+            st.plotly_chart(fig_imp, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             
         else:
             st.warning(train_msg)
@@ -845,7 +845,7 @@ elif selected_page == "🧠 AI Predictive Models":
                     
                     # Render Radial Gauge Chart
                     fig_gauge = visualizations.create_recidivism_gauge_chart(pred_risk)
-                    st.plotly_chart(fig_gauge, use_container_width=True)
+                    st.plotly_chart(fig_gauge, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
                     
                     # Calculate percentile in Pune suspect pool
                     higher_count = len(df_suspects[df_suspects['risk_score'] > pred_risk])
@@ -879,14 +879,14 @@ elif selected_page == "🧠 AI Predictive Models":
             col_sc1, col_sc2 = st.columns([1, 1])
             with col_sc1:
                 fig_heatmap = visualizations.create_correlation_heatmap(corr_df)
-                st.plotly_chart(fig_heatmap, use_container_width=True)
+                st.plotly_chart(fig_heatmap, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             with col_sc2:
                 feat_opt = corr_df['feature'].tolist()
                 feat_labels = {f: f.replace('_', ' ').title() for f in feat_opt}
                 sel_feat = st.selectbox("Select Variable for Trendline Regression", feat_opt, format_func=lambda x: feat_labels[x], key="sel_corr_feat")
                 
                 fig_scatter = visualizations.create_correlation_scatter(df_crimes, df_districts, sel_feat)
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.plotly_chart(fig_scatter, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
         else:
             st.info("No correlation data available.")
             
@@ -899,7 +899,7 @@ elif selected_page == "🧠 AI Predictive Models":
         
         if not daily_stats.empty:
             fig_anomaly = visualizations.create_anomaly_chart(daily_stats)
-            st.plotly_chart(fig_anomaly, use_container_width=True)
+            st.plotly_chart(fig_anomaly, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             
             # Anomaly Surge Log Table for Police Commanders
             anomalies_only = daily_stats[daily_stats['is_anomaly'] == True].sort_values(by='date', ascending=False)
@@ -1017,10 +1017,10 @@ elif selected_page == "🕸️ Criminal Network Analysis":
             
             col_track1, col_track2 = st.columns([1, 1])
             with col_track1:
-                st.plotly_chart(fig_net_highlight, use_container_width=True)
+                st.plotly_chart(fig_net_highlight, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             with col_track2:
                 fig_timeline = visualizations.create_offender_timeline(selected_sus_id, df_crimes, s_name)
-                st.plotly_chart(fig_timeline, use_container_width=True)
+                st.plotly_chart(fig_timeline, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
     else:
         st.info("No crimes are currently linked to suspects. Go to 'Intel Entry' to link suspects to crime reports.")
 

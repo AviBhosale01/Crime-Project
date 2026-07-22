@@ -186,6 +186,8 @@ def create_geospatial_map(crimes_df, show_hotspots=False, selected_hotspot_id=No
         margin={"r":0,"t":40,"l":0,"b":0},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        dragmode="pan",
+        hovermode="closest",
         legend=dict(
             yanchor="top",
             y=0.98,
@@ -257,6 +259,8 @@ def create_density_map(crimes_df):
         margin={"r":0,"t":40,"l":0,"b":0},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        dragmode="pan",
+        hovermode="closest",
         legend=dict(
             yanchor="top",
             y=0.98,
