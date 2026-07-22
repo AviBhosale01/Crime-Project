@@ -7,47 +7,130 @@ import networkx as nx
 # Set default theme to dark
 px.defaults.template = "plotly_dark"
 
+def format_crime_hover_text(df, show_hotspots=False):
+    """
+    Generate rich, attractive HTML hover tooltips for map data points including:
+    - Crime category & severity badge
+    - District / location & exact lat/lon coordinates
+    - Timestamp
+    - Status
+    - Linked Suspect Name (bold blue)
+    - Gang Affiliation
+    - ML Risk Score (color coded)
+    - Hotspot cluster zone (if applicable)
+    """
+    hover_list = []
+    
+    for _, row in df.iterrows():
+        # Suspect details
+        sus_name = str(row['suspect_name']).strip() if pd.notnull(row.get('suspect_name')) and str(row['suspect_name']).strip() != '' and str(row['suspect_name']).lower() != 'none' and str(row['suspect_name']).lower() != 'nan' else None
+        if sus_name:
+            suspect_html = f"👤 <b>Linked Suspect:</b> <b style='color: #60A5FA; font-size: 1.05em;'>{sus_name}</b>"
+        else:
+            suspect_html = "👤 <b>Linked Suspect:</b> <span style='color: #9CA3AF;'>Unidentified / Unknown</span>"
+            
+        gang_name = str(row['gang_affiliation']).strip() if pd.notnull(row.get('gang_affiliation')) and str(row['gang_affiliation']).strip() != '' and str(row['gang_affiliation']).lower() != 'none' and str(row['gang_affiliation']).lower() != 'nan' else None
+        if gang_name:
+            gang_html = f"👥 <b>Gang:</b> <b>{gang_name}</b>"
+        else:
+            gang_html = "👥 <b>Gang:</b> <span style='color: #9CA3AF;'>Independent / None</span>"
+            
+        risk_score = row.get('suspect_risk_score')
+        if pd.notnull(risk_score) and str(risk_score) != '':
+            try:
+                r_val = float(risk_score)
+                r_color = "#EF4444" if r_val > 0.65 else ("#F59E0B" if r_val > 0.35 else "#10B981")
+                risk_html = f"⚡ <b>ML Risk Score:</b> <b style='color: {r_color};'>{r_val:.2f}</b>"
+            except Exception:
+                risk_html = "⚡ <b>ML Risk Score:</b> <span style='color: #9CA3AF;'>N/A</span>"
+        else:
+            risk_html = "⚡ <b>ML Risk Score:</b> <span style='color: #9CA3AF;'>N/A</span>"
+            
+        # Timestamp
+        ts = row.get('timestamp')
+        if pd.notnull(ts):
+            try:
+                date_html = pd.to_datetime(ts).strftime('%d %b %Y, %I:%M %p')
+            except Exception:
+                date_html = str(ts)
+        else:
+            date_html = "N/A"
+            
+        # Severity
+        sev = str(row.get('severity', 'Low'))
+        if sev == "High":
+            sev_badge = "<span style='background-color: rgba(239, 68, 68, 0.25); color: #EF4444; border: 1px solid #EF4444; padding: 2px 8px; border-radius: 12px; font-weight: bold;'>🔴 HIGH SEVERITY</span>"
+        elif sev == "Medium":
+            sev_badge = "<span style='background-color: rgba(245, 158, 11, 0.25); color: #F59E0B; border: 1px solid #F59E0B; padding: 2px 8px; border-radius: 12px; font-weight: bold;'>🟡 MEDIUM SEVERITY</span>"
+        else:
+            sev_badge = "<span style='background-color: rgba(16, 185, 129, 0.25); color: #10B981; border: 1px solid #10B981; padding: 2px 8px; border-radius: 12px; font-weight: bold;'>🟢 LOW SEVERITY</span>"
+            
+        # Status
+        status = str(row.get('status', 'Open'))
+        if status == "Closed":
+            status_html = "<span style='color: #10B981; font-weight: 600;'>✅ Closed</span>"
+        elif status == "In Investigation":
+            status_html = "<span style='color: #F59E0B; font-weight: 600;'>🔍 In Investigation</span>"
+        else:
+            status_html = "<span style='color: #EF4444; font-weight: 600;'>⚠️ Open</span>"
+            
+        district = str(row.get('district_name', 'Pune Sector'))
+        c_type = str(row.get('crime_type', 'Incident'))
+        lat = float(row.get('latitude', 0.0))
+        lon = float(row.get('longitude', 0.0))
+        
+        # Build Hover HTML string
+        lines = [
+            f"<b style='font-size: 1.15em; color: #FFFFFF;'>🚨 {c_type.upper()}</b> &nbsp;&nbsp; {sev_badge}",
+            f"<span style='color: #4B5563;'>────────────────────────────────────────</span>",
+            f"📍 <b>Location:</b> {district} &nbsp;({lat:.4f}° N, {lon:.4f}° E)",
+            f"📅 <b>Timestamp:</b> {date_html}",
+            f"📌 <b>Status:</b> {status_html}",
+            f"<span style='color: #4B5563;'>────────────────────────────────────────</span>",
+            f"{suspect_html}",
+            f"{gang_html}",
+            f"{risk_html}"
+        ]
+        
+        if show_hotspots and 'Hotspot Type' in row:
+            lines.append(f"🔥 <b>Cluster Zone:</b> <b style='color: #3B82F6;'>{row['Hotspot Type']}</b>")
+            
+        hover_list.append("<br>".join(lines))
+        
+    return hover_list
+
 def create_geospatial_map(crimes_df, show_hotspots=False, selected_hotspot_id=None):
     """
-    Generate an interactive Mapbox map of crimes.
+    Generate an interactive Mapbox map of crimes with rich suspect hover popups.
     If show_hotspots=True, color-code nodes by DBSCAN cluster IDs.
     """
     if crimes_df.empty:
-        # Return empty map centered on Pune
         fig = px.scatter_mapbox(lat=[18.5204], lon=[73.8567], zoom=11.5)
         fig.update_layout(mapbox_style="carto-darkmatter")
         return fig
         
     df = crimes_df.copy()
     
-    # Pre-format dates for hover
-    df['date_str'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
-    
     centroid_lats = []
     centroid_lons = []
     centroid_texts = []
     
     if show_hotspots and 'hotspot_id' in df.columns:
-        # Separate noise (-1) from hotspots
-        # Convert hotspot_id to categorical string for discrete colors
         df['Hotspot Type'] = df['hotspot_id'].apply(lambda x: "Noise / Isolated" if x == -1 else f"Hotspot Zone {x}")
         
-        # Filter if a specific hotspot is selected
         if selected_hotspot_id is not None:
             df = df[df['hotspot_id'] == selected_hotspot_id]
             
         color_col = 'Hotspot Type'
-        # Generate color map
         unique_hotspots = sorted(df['hotspot_id'].unique())
-        color_discrete_map = {"Noise / Isolated": "#6b7280"} # Gray for noise
-        colors = px.colors.qualitative.Safe
+        color_discrete_map = {"Noise / Isolated": "#6b7280"}
+        colors = px.colors.qualitative.Bold
         color_idx = 0
         for hid in unique_hotspots:
             if hid != -1:
                 color_discrete_map[f"Hotspot Zone {hid}"] = colors[color_idx % len(colors)]
                 color_idx += 1
                 
-        # Calculate centroids of hotspots for overlays
         active_hids = [hid for hid in df['hotspot_id'].unique() if hid != -1]
         hotspot_names = {
             0: "Kothrud Central Zone",
@@ -63,48 +146,38 @@ def create_geospatial_map(crimes_df, show_hotspots=False, selected_hotspot_id=No
                 c_name = hotspot_names.get(hid, f"Hotspot Zone {hid}")
                 centroid_lats.append(c_lat)
                 centroid_lons.append(c_lon)
-                centroid_texts.append(f"🔴 {c_name} ({c_count} cases)")
+                centroid_texts.append(f"🔴 <b>{c_name}</b> ({c_count} cases)")
                 
+        df['hover_info'] = format_crime_hover_text(df, show_hotspots=True)
+        
         fig = px.scatter_mapbox(
             df,
             lat='latitude',
             lon='longitude',
             color=color_col,
             color_discrete_map=color_discrete_map,
-            size=df['severity'].map({'Low': 6, 'Medium': 10, 'High': 15}),
-            hover_name='crime_type',
-            hover_data={
-                'date_str': True,
-                'severity': True,
-                'district_name': True,
-                'status': True,
-                'latitude': False,
-                'longitude': False,
-                'Hotspot Type': True
-            },
-            zoom=12,
+            size=df['severity'].map({'Low': 8, 'Medium': 12, 'High': 18}),
+            custom_data=['hover_info'],
+            zoom=11.5,
             title="Geospatial Intelligence Map - DBSCAN Hotspots"
         )
     else:
-        # Standard crime map colored by Crime Type or Severity
+        df['hover_info'] = format_crime_hover_text(df, show_hotspots=False)
+        
         fig = px.scatter_mapbox(
             df,
             lat='latitude',
             lon='longitude',
             color='crime_type',
-            size=df['severity'].map({'Low': 6, 'Medium': 10, 'High': 15}),
-            hover_name='crime_type',
-            hover_data={
-                'date_str': True,
-                'severity': True,
-                'district_name': True,
-                'status': True,
-                'latitude': False,
-                'longitude': False
-            },
-            zoom=12,
+            size=df['severity'].map({'Low': 8, 'Medium': 12, 'High': 18}),
+            custom_data=['hover_info'],
+            zoom=11.5,
             title="Geospatial Intelligence Map - Incident Distribution"
         )
+        
+    fig.update_traces(
+        hovertemplate="%{customdata[0]}<extra></extra>"
+    )
         
     fig.update_layout(
         mapbox_style="carto-darkmatter",
@@ -118,9 +191,10 @@ def create_geospatial_map(crimes_df, show_hotspots=False, selected_hotspot_id=No
             y=0.98,
             xanchor="left",
             x=0.02,
-            bgcolor="rgba(17, 24, 39, 0.8)",
+            bgcolor="rgba(17, 24, 39, 0.85)",
             bordercolor="rgba(75, 85, 99, 0.4)",
-            borderwidth=1
+            borderwidth=1,
+            font=dict(color="#E5E7EB", size=12)
         )
     )
     
@@ -130,37 +204,69 @@ def create_geospatial_map(crimes_df, show_hotspots=False, selected_hotspot_id=No
             lat=centroid_lats,
             lon=centroid_lons,
             mode='markers+text',
-            marker=dict(size=14, color='#3B82F6', opacity=0.95),
+            marker=dict(size=14, color='#EF4444', opacity=0.95),
             text=centroid_texts,
             textposition='top right',
-            textfont=dict(size=11, color='#EEEEEE', family='Outfit, Inter, sans-serif'),
+            textfont=dict(size=12, color='#FFFFFF', family='Outfit, Inter, sans-serif'),
             hoverinfo='text',
-            name='Active Hotspots Info'
+            name='Active Hotspots Centroids'
         ))
         
     return fig
 
 def create_density_map(crimes_df):
-    """Density Heatmap of crimes."""
+    """Density Heatmap of crimes with interactive scatter overlay for dot-level hover details."""
     if crimes_df.empty:
         fig = px.scatter_mapbox(lat=[18.5204], lon=[73.8567], zoom=11.5)
         fig.update_layout(mapbox_style="carto-darkmatter")
         return fig
         
+    df = crimes_df.copy()
+    df['hover_info'] = format_crime_hover_text(df, show_hotspots=False)
+    
+    # Base density map
     fig = px.density_mapbox(
-        crimes_df, 
+        df, 
         lat='latitude', 
         lon='longitude', 
-        radius=12,
+        radius=18,
         zoom=11.5,
         mapbox_style="carto-darkmatter",
-        title="Crime Density Heatmap"
+        title="Crime Density Heatmap & Incident Overlay",
+        color_continuous_scale="Viridis"
     )
+    
+    # Interactive scatter overlay trace for individual point hover popups
+    scatter_trace = go.Scattermapbox(
+        lat=df['latitude'],
+        lon=df['longitude'],
+        mode='markers',
+        marker=dict(
+            size=df['severity'].map({'Low': 8, 'Medium': 12, 'High': 16}),
+            color=df['severity'].map({'Low': '#10B981', 'Medium': '#F59E0B', 'High': '#EF4444'}),
+            opacity=0.75
+        ),
+        text=df['hover_info'],
+        hovertemplate="%{text}<extra></extra>",
+        name="Incident Details Overlay"
+    )
+    fig.add_trace(scatter_trace)
+    
     fig.update_layout(
         mapbox_center={"lat": 18.5204, "lon": 73.8567},
         margin={"r":0,"t":40,"l":0,"b":0},
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend=dict(
+            yanchor="top",
+            y=0.98,
+            xanchor="left",
+            x=0.02,
+            bgcolor="rgba(17, 24, 39, 0.85)",
+            bordercolor="rgba(75, 85, 99, 0.4)",
+            borderwidth=1,
+            font=dict(color="#E5E7EB", size=12)
+        )
     )
     return fig
 
