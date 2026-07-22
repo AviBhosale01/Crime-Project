@@ -1,0 +1,6 @@
+# Pune Crime Intelligence Command Center - Security Passkey Configuration Template
+# Copy this file to `config_keys.py` and set your custom passkeys.
+# `config_keys.py` is ignored by Git to prevent leaking passkeys.
+
+INTEL_ENTRY_KEY = "YOUR_INTEL_ENTRY_KEY_HERE"
+VIEW_DATA_KEY = "YOUR_VIEW_DATA_KEY_HERE"

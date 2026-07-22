@@ -27,14 +27,14 @@ Equipped with a **Universal Text-to-SQL AI Chatbot**, the platform allows invest
 
 ## 🔒 Security & Access Control
 
-Access to data entry and raw database tables is restricted using secure password gates. These keys are defined in the external file `config_keys.py`:
+Access to data entry and raw database tables is restricted using secure password gates. These keys can be configured via Streamlit secrets (`.streamlit/secrets.toml`), environment variables, or an uncommitted local `config_keys.py` file:
 
-| Page / Action | Environment Key | Default Passkey |
+| Page / Action | Environment / Secret Key | Configuration Method |
 | :--- | :--- | :--- |
-| **📝 Intel Entry (CRUD)** | `INTEL_ENTRY_KEY` | `crime_pune_entry_2026` |
-| **📂 View Data (Explorer)** | `VIEW_DATA_KEY` | `crime_pune_view_2026` |
+| **📝 Intel Entry (CRUD)** | `INTEL_ENTRY_KEY` | Set in `.streamlit/secrets.toml` or `config_keys.py` |
+| **📂 View Data (Explorer)** | `VIEW_DATA_KEY` | Set in `.streamlit/secrets.toml` or `config_keys.py` |
 
-*To change passkeys for deployment, simply edit the string constants inside `config_keys.py`.*
+*To set up passkeys for local development, copy `config_keys.py.example` to `config_keys.py` and specify your custom passkey strings. `config_keys.py` is included in `.gitignore` to prevent committing sensitive keys to public repositories.*
 
 ---
 
@@ -82,13 +82,13 @@ Get the Pune Crime Intelligence Command Center running on your local machine in 
 Make sure all project files are placed in your working directory:
 ```bash
 📂 project-directory/
-├── 📄 app.py              # Streamlit dashboard layout & pages
-├── 📄 database.py         # SQLite connection, seeding, & CRUD functions
-├── 📄 config_keys.py      # App security passkey configurations
-├── 📄 analytics.py        # ML predictors & anomaly detection
-├── 📄 visualizations.py   # Plotly charts, Mapbox maps, & NetworkX
-├── 📄 requirements.txt    # Library dependencies
-└── 📄 README.md           # Documentation
+├── 📄 app.py                  # Streamlit dashboard layout & pages
+├── 📄 database.py             # SQLite connection, seeding, & CRUD functions
+├── 📄 config_keys.py.example  # Security passkey template (copy to uncommitted config_keys.py)
+├── 📄 analytics.py            # ML predictors & anomaly detection
+├── 📄 visualizations.py       # Plotly charts, Mapbox maps, & NetworkX
+├── 📄 requirements.txt        # Library dependencies
+└── 📄 README.md               # Documentation
 ```
 
 ### Step 2: Install Dependencies
