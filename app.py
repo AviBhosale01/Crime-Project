@@ -1648,107 +1648,121 @@ elif selected_page == "📂 View Data":
 
 # --- Page 6: AI Intel Chatbot ---
 elif selected_page == "💬 AI Intel Chatbot":
-    st.markdown("## 💬 AI Intelligence Chatbot")
-    st.write("Ask natural language questions about Pune districts, suspects, crimes, and relationships. The AI parses your question, runs queries against the SQLite database, and returns the result.")
+    st.markdown("## 💬 AI Intelligence Chatbot & Natural Language SQL Assistant")
+    st.write("Ask natural language queries about Pune crime records, suspect registries, gang networks, and district socio-economics. The AI assistant generates verified read-only SQL queries and presents structured intelligence briefings.")
 
-    # API Credentials Setup Expander / Panel
-    st.markdown("### 🔑 API Configuration")
-    config_col1, config_col2, config_col3 = st.columns([1, 1.2, 1.2])
-    with config_col1:
-        saved_provider = st.session_state.get("llm_provider", "Gemini")
-        provider_list = ["Gemini", "OpenAI", "OpenRouter", "Groq", "NVIDIA NIM"]
-        provider_idx = provider_list.index(saved_provider) if saved_provider in provider_list else 0
-        provider = st.selectbox(
-            "API Provider", provider_list,
-            index=provider_idx
-        )
-    with config_col2:
-        presets = {
-            "Gemini": ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro", "gemini-2.5-pro", "Custom Model"],
-            "OpenAI": ["gpt-4o-mini", "gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo", "Custom Model"],
-            "OpenRouter": ["meta-llama/llama-3-8b-instruct:free", "google/gemma-2-9b-it:free", "mistralai/mistral-7b-instruct:free", "openrouter/auto", "Custom Model"],
-            "Groq": ["llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma2-9b-it", "Custom Model"],
-            "NVIDIA NIM": ["meta/llama3-70b-instruct", "nvidia/nemotron-4-340b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct", "Custom Model"]
-        }
-        options = presets.get(provider, ["Custom Model"])
-        
-        current_model = st.session_state.get("llm_model", options[0])
-        default_idx = 0
-        if current_model in options:
-            default_idx = options.index(current_model)
-        else:
-            default_idx = len(options) - 1
-            
-        selected_model_option = st.selectbox("Select Model Version", options, index=default_idx)
-        
-        if selected_model_option == "Custom Model":
-            model_name_input = st.text_input("Enter Custom Model Name/ID", value=current_model if current_model not in options else "")
-        else:
-            model_name_input = selected_model_option
-            
-    with config_col3:
-        api_key_input = st.text_input(
-            "API Key",
-            type="password",
-            value=st.session_state.get("llm_api_key", ""),
-            placeholder="Paste your API Key here"
-        )
-        
-    btn_col1, btn_col2, _ = st.columns([1, 1, 3])
-    with btn_col1:
-        if st.button("Save API Credentials"):
-            st.session_state["llm_api_key"] = api_key_input
-            st.session_state["llm_provider"] = provider
-            st.session_state["llm_model"] = model_name_input
-            st.success("Credentials saved successfully!")
-            st.rerun()
-    with btn_col2:
-        if st.button("Clear API Credentials"):
-            st.session_state["llm_api_key"] = ""
-            st.session_state["llm_provider"] = "Gemini"
-            st.session_state["llm_model"] = "gemini-1.5-flash"
-            st.success("Credentials cleared!")
-            st.rerun()
-
-    # Verify if key is present
     api_key = st.session_state.get("llm_api_key", "")
     provider = st.session_state.get("llm_provider", "Gemini")
+    model_name = st.session_state.get("llm_model", "gemini-1.5-flash")
+    
+    # Status bar header
+    col_st1, col_st2 = st.columns([3, 1])
+    with col_st1:
+        if api_key:
+            st.markdown(f"**Connection Status**: 🟢 <span style='color: #10B981; font-weight: 700;'>Online</span> &nbsp;|&nbsp; **Provider**: `{provider}` &nbsp;|&nbsp; **Model**: `{model_name}`", unsafe_allow_html=True)
+        else:
+            st.markdown("**Connection Status**: 🔴 <span style='color: #EF4444; font-weight: 700;'>API Key Required</span>", unsafe_allow_html=True)
+    with col_st2:
+        if st.button("🗑️ Clear Chat History", key="btn_clear_chat"):
+            st.session_state.messages = []
+            st.rerun()
 
-    st.markdown("---")
+    # Collapsible API Settings Expander
+    with st.expander("⚙️ API Provider & Key Configuration", expanded=not bool(api_key)):
+        config_col1, config_col2, config_col3 = st.columns([1, 1.2, 1.2])
+        with config_col1:
+            provider_list = ["Gemini", "OpenAI", "OpenRouter", "Groq", "NVIDIA NIM"]
+            provider_idx = provider_list.index(provider) if provider in provider_list else 0
+            new_provider = st.selectbox("API Provider", provider_list, index=provider_idx, key="cb_provider_sel")
+        with config_col2:
+            presets = {
+                "Gemini": ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-1.5-pro", "gemini-2.5-pro", "Custom Model"],
+                "OpenAI": ["gpt-4o-mini", "gpt-3.5-turbo", "gpt-4o", "gpt-4-turbo", "Custom Model"],
+                "OpenRouter": ["meta-llama/llama-3-8b-instruct:free", "google/gemma-2-9b-it:free", "mistralai/mistral-7b-instruct:free", "openrouter/auto", "Custom Model"],
+                "Groq": ["llama3-8b-8192", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma2-9b-it", "Custom Model"],
+                "NVIDIA NIM": ["meta/llama3-70b-instruct", "nvidia/nemotron-4-340b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct", "Custom Model"]
+            }
+            options = presets.get(new_provider, ["Custom Model"])
+            default_idx = options.index(model_name) if model_name in options else (len(options) - 1 if "Custom Model" in options else 0)
+            selected_model_option = st.selectbox("Model Version", options, index=default_idx, key="cb_model_option")
+            model_name_input = st.text_input("Custom Model Name/ID", value=model_name if model_name not in options else "", key="cb_custom_model_txt") if selected_model_option == "Custom Model" else selected_model_option
+                
+        with config_col3:
+            api_key_input = st.text_input("API Key", type="password", value=api_key, placeholder="Paste your API Key here", key="cb_api_key_input")
+            
+        btn_c1, btn_c2, _ = st.columns([1, 1, 3])
+        with btn_c1:
+            if st.button("Save Credentials", key="btn_save_creds"):
+                st.session_state["llm_api_key"] = api_key_input
+                st.session_state["llm_provider"] = new_provider
+                st.session_state["llm_model"] = model_name_input
+                st.success("API credentials saved!")
+                st.rerun()
+        with btn_c2:
+            if st.button("Clear Credentials", key="btn_clear_creds"):
+                st.session_state["llm_api_key"] = ""
+                st.session_state["llm_provider"] = "Gemini"
+                st.session_state["llm_model"] = "gemini-1.5-flash"
+                st.success("Credentials cleared!")
+                st.rerun()
+
+    st.markdown("<hr style='border-top: 1px solid rgba(75, 85, 99, 0.2);'>", unsafe_allow_html=True)
 
     if not api_key:
-        st.info("💡 **Credentials Required**: Please configure and save your Gemini or OpenAI API Key above to activate the AI Chatbot.")
+        st.info("💡 **API Key Required**: Please expand the settings above and save your Gemini or OpenAI API Key to start chatting with the intelligence database.")
     else:
-        # Chat interface
         if "messages" not in st.session_state:
             st.session_state.messages = []
+
+        # Quick Prompt Chips
+        st.markdown("##### 💡 Suggested Intelligence Queries:")
+        chip_col1, chip_col2, chip_col3, chip_col4 = st.columns(4)
+        clicked_prompt = None
+        with chip_col1:
+            if st.button("🔍 Top 5 High-Risk Suspects", key="chip_top_suspects"):
+                clicked_prompt = "List top 5 highest risk repeat suspects in Pune with their gang affiliation."
+        with chip_col2:
+            if st.button("📍 Crimes in Kothrud", key="chip_kothrud_crimes"):
+                clicked_prompt = "How many crimes were logged in Kothrud district and what are their severity levels?"
+        with chip_col3:
+            if st.button("🚨 Open High Severity Cases", key="chip_open_cases"):
+                clicked_prompt = "List all open crimes with High severity level across Pune."
+        with chip_col4:
+            if st.button("👥 Pune Local Boys Gang", key="chip_gang_members"):
+                clicked_prompt = "Who are all the suspects affiliated with Pune Local Boys gang?"
+
+        st.markdown("<br>", unsafe_allow_html=True)
 
         # Display Chat History
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
-                if "sql_query" in message:
+                if "sql_query" in message and message["sql_query"]:
                     with st.expander("🔍 Executed SQL Query"):
                         st.code(message["sql_query"], language="sql")
-                if "sql_error" in message:
+                if "query_df_json" in message and message["query_df_json"]:
+                    with st.expander("📊 Queried Database Records"):
+                        try:
+                            df_rec = pd.read_json(message["query_df_json"])
+                            st.dataframe(df_rec, use_container_width=True, hide_index=True)
+                        except Exception:
+                            pass
+                if "sql_error" in message and message["sql_error"]:
                     st.error(f"SQL Error: {message['sql_error']}")
 
-        # User Question Input
-        user_input = st.chat_input("Ask a question about the database (e.g. 'how many suspects in Kothrud are gang members?')")
-        
-        if user_input:
-            # Display user message
+        # Input logic
+        chat_user_input = st.chat_input("Ask a question about Pune crime database...")
+        prompt_to_process = clicked_prompt if clicked_prompt else chat_user_input
+
+        if prompt_to_process:
             with st.chat_message("user"):
-                st.markdown(user_input)
+                st.markdown(prompt_to_process)
             
-            # Append user message
-            st.session_state.messages.append({"role": "user", "content": user_input})
+            st.session_state.messages.append({"role": "user", "content": prompt_to_process})
             
-            # Generate response
             with st.chat_message("assistant"):
-                status_placeholder = st.status("🤖 Analyzing question & writing SQL query...")
+                status_placeholder = st.status("🤖 Analyzing question & writing SQL query...", expanded=True)
                 
-                # Step 1: LLM generates SQL or decides NO_SQL
                 sql_system = """You are an expert SQL assistant for a Crime Analytics platform in Pune, Maharashtra.
 The database is SQLite. The schema has 4 tables:
 1. districts (id, name, unemployment_rate, poverty_index, median_income, education_index, population_density, center_lat, center_lon)
@@ -1756,37 +1770,34 @@ The database is SQLite. The schema has 4 tables:
 3. crimes (id, timestamp, district_id, crime_type, severity, latitude, longitude, status, suspect_id)
 4. suspect_connections (suspect_a, suspect_b, relation_type, strength)
 
-Your task is to translate the user's natural language question into a single valid SQLite query.
+Your task is to translate the user's natural language question into a single valid SQLite SELECT query.
 Return ONLY the SQL query inside a markdown code block starting with ```sql and ending with ```.
-Do not write any explanation or intro/outro.
+Do not write any explanation or intro/outro. Only SELECT queries are permitted.
 
 Examples:
 Question: "How many crimes are there in Kothrud?"
 Response:
 ```sql
-SELECT COUNT(*) FROM crimes c JOIN districts d ON c.district_id = d.id WHERE d.name = 'Kothrud';
+SELECT COUNT(*) as total_crimes FROM crimes c JOIN districts d ON c.district_id = d.id WHERE d.name = 'Kothrud';
 ```
 
-Question: "Who are the top 3 highest risk suspects?"
+Question: "Who are the top 5 highest risk suspects?"
 Response:
 ```sql
-SELECT name, risk_score FROM suspects ORDER BY risk_score DESC LIMIT 3;
+SELECT name, gang_affiliation, risk_score, priors_count FROM suspects ORDER BY risk_score DESC LIMIT 5;
 ```
 
 Question: "List all crimes committed by Rahul Pawar."
 Response:
 ```sql
-SELECT c.crime_type, c.severity, c.timestamp, d.name as district FROM crimes c JOIN suspects s ON c.suspect_id = s.id JOIN districts d ON c.district_id = d.id WHERE s.name = 'Rahul Pawar';
+SELECT c.crime_type, c.severity, c.timestamp, d.name as district, c.status FROM crimes c JOIN suspects s ON c.suspect_id = s.id JOIN districts d ON c.district_id = d.id WHERE s.name = 'Rahul Pawar';
 ```
 
-If the question is a greeting, general conversational message, or cannot be answered by querying the database (e.g. "what is the capital of France?", "tell me a joke", "recommend safety precautions"), respond with exactly:
+If the question is a greeting, general conversational message, or cannot be answered by querying the database, respond with exactly:
 NO_SQL
 """
                 try:
-                    # Call LLM for SQL
                     response_text = ""
-                    selected_model = st.session_state.get("llm_model", "gemini-1.5-flash" if provider == "Gemini" else "gpt-3.5-turbo")
-                    
                     extra_headers = {}
                     if provider == "OpenRouter":
                         extra_headers = {
@@ -1797,8 +1808,8 @@ NO_SQL
                     if provider == "Gemini":
                         import google.generativeai as genai
                         genai.configure(api_key=api_key)
-                        model = genai.GenerativeModel(selected_model, system_instruction=sql_system)
-                        response_text = model.generate_content(user_input).text
+                        model = genai.GenerativeModel(model_name, system_instruction=sql_system)
+                        response_text = model.generate_content(prompt_to_process).text
                     else:
                         from openai import OpenAI
                         base_urls = {
@@ -1809,10 +1820,10 @@ NO_SQL
                         }
                         client = OpenAI(api_key=api_key, base_url=base_urls.get(provider))
                         resp = client.chat.completions.create(
-                            model=selected_model,
+                            model=model_name,
                             messages=[
                                 {"role": "system", "content": sql_system},
-                                {"role": "user", "content": user_input}
+                                {"role": "user", "content": prompt_to_process}
                             ],
                             temperature=0.0,
                             extra_headers=extra_headers
@@ -1823,7 +1834,6 @@ NO_SQL
                     sql_query = None
                     
                     if "NO_SQL" not in response_text and "```sql" in response_text:
-                        # Extract SQL
                         start = response_text.find("```sql") + 6
                         end = response_text.find("```", start)
                         sql_query = response_text[start:end].strip()
@@ -1831,53 +1841,56 @@ NO_SQL
                         sql_query = response_text
 
                     sql_error = None
-                    query_results = None
+                    query_df_json = None
+                    df_result = None
                     
+                    # Read-only enforcement check
                     if sql_query:
-                        status_placeholder.update(label="🔍 Running query on Pune Crime Database...", state="running")
-                        # Run query on SQLite
-                        try:
-                            import database
-                            conn = database.get_connection()
-                            df_result = pd.read_sql_query(sql_query, conn)
-                            conn.close()
-                            query_results = df_result.to_json(orient="records")
-                            status_placeholder.update(label=f"✅ Query complete. Found {len(df_result)} rows.", state="complete")
-                        except Exception as e:
-                            sql_error = str(e)
-                            status_placeholder.update(label="❌ SQLite Execution Failed.", state="error")
+                        cleaned_sql = sql_query.upper().strip()
+                        forbidden_words = ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE", "CREATE", "REPLACE"]
+                        if any(w in cleaned_sql for w in forbidden_words) or not (cleaned_sql.startswith("SELECT") or cleaned_sql.startswith("WITH")):
+                            sql_error = "Security Policy Error: Non-read-only query blocked."
+                            sql_query = None
+                            status_placeholder.update(label="❌ Security Policy Error: Non-read-only query blocked.", state="error")
+                        else:
+                            status_placeholder.update(label="🔍 Executing read-only query on SQLite...", state="running")
+                            try:
+                                conn = database.get_connection()
+                                df_result = pd.read_sql_query(sql_query, conn)
+                                conn.close()
+                                query_df_json = df_result.to_json(orient="records")
+                                status_placeholder.update(label=f"✅ Query complete. Found {len(df_result)} records.", state="complete")
+                            except Exception as e:
+                                sql_error = str(e)
+                                status_placeholder.update(label="❌ SQLite Execution Failed.", state="error")
                     else:
-                        status_placeholder.update(label="🤖 Decided general conversational response (no SQL needed).", state="complete")
+                        status_placeholder.update(label="🤖 Answer generated directly.", state="complete")
 
-                    # Step 2: Call LLM to summarize/answer the question
+                    # Formulate final response
                     status_placeholder2 = st.empty()
-                    status_placeholder2.info("📝 Formulating response...")
+                    status_placeholder2.info("📝 Formulating response briefing...")
                     
-                    explain_system = """You are the AI Chatbot of the Pune Crime Intelligence Command Center.
-You are helping an investigator interpret database query results.
-Use the user's question, the SQL query that was run (if any), and the raw query results (provided as a JSON or table, if any) to write a clear, helpful, and professional answer.
-Explain any interesting trends or insights in the data if applicable.
-Always refer to Pune, Maharashtra context.
-If no SQL query was run, answer the user's question directly and intelligently using your general knowledge about crime analytics and policing.
+                    explain_system = """You are the AI Intelligence Briefing Officer for Pune Police Command Center.
+Interpret database results clearly and professionally for police commanders.
+Keep responses concise, factual, and formatted with clean Markdown bullet points. Refer to Pune, Maharashtra context.
 """
-                    
-                    prompt = f"User Question: {user_input}\n\n"
+                    prompt = f"User Question: {prompt_to_process}\n\n"
                     if sql_query:
                         prompt += f"Executed SQL Query:\n{sql_query}\n\n"
                         if sql_error:
                             prompt += f"SQL Error:\n{sql_error}\n\n"
                         else:
-                            prompt += f"Raw DB Results:\n{query_results}\n\n"
+                            prompt += f"Raw DB Results:\n{query_df_json}\n\n"
                     else:
                         prompt += "(No SQL query was run for this request.)\n\n"
                     
                     final_answer = ""
                     if provider == "Gemini":
-                        model2 = genai.GenerativeModel(selected_model, system_instruction=explain_system)
+                        model2 = genai.GenerativeModel(model_name, system_instruction=explain_system)
                         final_answer = model2.generate_content(prompt).text
                     else:
                         resp = client.chat.completions.create(
-                            model=selected_model,
+                            model=model_name,
                             messages=[
                                 {"role": "system", "content": explain_system},
                                 {"role": "user", "content": prompt}
@@ -1889,12 +1902,23 @@ If no SQL query was run, answer the user's question directly and intelligently u
                     status_placeholder2.empty()
                     st.markdown(final_answer)
                     
-                    # Save assistant message
+                    if sql_query:
+                        with st.expander("🔍 Executed SQL Query"):
+                            st.code(sql_query, language="sql")
+                    if df_result is not None and not df_result.empty:
+                        with st.expander("📊 Queried Database Records"):
+                            st.dataframe(df_result, use_container_width=True, hide_index=True)
+                    if sql_error:
+                        st.error(f"SQL Error: {sql_error}")
+                        
                     msg_obj = {"role": "assistant", "content": final_answer}
                     if sql_query:
                         msg_obj["sql_query"] = sql_query
+                    if query_df_json:
+                        msg_obj["query_df_json"] = query_df_json
                     if sql_error:
                         msg_obj["sql_error"] = sql_error
+                        
                     st.session_state.messages.append(msg_obj)
                     st.rerun()
                     
