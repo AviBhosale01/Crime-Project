@@ -270,56 +270,68 @@ def create_density_map(crimes_df):
     )
     return fig
 
-def create_network_graph(suspects_df, connections_df, highlight_suspect_id=None):
+def create_network_graph(suspects_df, connections_df, highlight_suspect_id=None, selected_gang=None):
     """
     Build and render criminal network graph using NetworkX and Plotly.
-    Node size reflects Degree Centrality (connections count).
+    Node size reflects Degree Centrality.
     Node color reflects ML Suspect Risk Score.
+    Edge colors reflect Relationship Type (Gang Member, Accomplice, Co-arrestee, Relative).
+    Edge thickness reflects Link Strength (1-5).
     """
     if suspects_df.empty or connections_df.empty:
         fig = go.Figure()
-        fig.add_annotation(text="No Network Data Available", showarrow=False, font=dict(size=18))
+        fig.add_annotation(text="No Network Data Available", showarrow=False, font=dict(size=18, color="#9CA3AF"))
         fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         return fig, {}
         
-    # --- Performance Optimization ---
-    # With 2000+ suspects, rendering all in browser freezes it. We filter to connected suspects.
+    df_sus = suspects_df.copy()
+    df_con = connections_df.copy()
+    
+    # Optional Gang Filter
+    if selected_gang and selected_gang != "All Gangs":
+        df_sus = df_sus[df_sus['gang_affiliation'] == selected_gang]
+        valid_ids = set(df_sus['id'].tolist())
+        df_con = df_con[df_con['suspect_a'].isin(valid_ids) & df_con['suspect_b'].isin(valid_ids)]
+        
     if highlight_suspect_id is not None:
-        # Highlight: Show target suspect + neighbors
         neighbors = {int(highlight_suspect_id)}
-        for _, row in connections_df.iterrows():
+        for _, row in df_con.iterrows():
             sa, sb = int(row['suspect_a']), int(row['suspect_b'])
             if sa == highlight_suspect_id:
                 neighbors.add(sb)
             elif sb == highlight_suspect_id:
                 neighbors.add(sa)
-        
-        filtered_suspects = suspects_df[suspects_df['id'].isin(neighbors)]
-        filtered_connections = connections_df[
-            connections_df['suspect_a'].isin(neighbors) & 
-            connections_df['suspect_b'].isin(neighbors)
+                
+        filtered_suspects = df_sus[df_sus['id'].isin(neighbors)]
+        filtered_connections = df_con[
+            df_con['suspect_a'].isin(neighbors) & 
+            df_con['suspect_b'].isin(neighbors)
         ]
     else:
-        # No Highlight: Show top 80 most connected suspects to keep network readable & responsive
+        # Show top 90 most connected suspects
         degrees = {}
-        for _, row in connections_df.iterrows():
+        for _, row in df_con.iterrows():
             sa, sb = int(row['suspect_a']), int(row['suspect_b'])
             degrees[sa] = degrees.get(sa, 0) + 1
             degrees[sb] = degrees.get(sb, 0) + 1
             
-        top_connected = sorted(degrees.keys(), key=lambda x: degrees[x], reverse=True)[:80]
+        top_connected = sorted(degrees.keys(), key=lambda x: degrees[x], reverse=True)[:90]
         top_connected_set = set(top_connected)
         
-        filtered_suspects = suspects_df[suspects_df['id'].isin(top_connected_set)]
-        filtered_connections = connections_df[
-            connections_df['suspect_a'].isin(top_connected_set) & 
-            connections_df['suspect_b'].isin(top_connected_set)
+        filtered_suspects = df_sus[df_sus['id'].isin(top_connected_set)]
+        filtered_connections = df_con[
+            df_con['suspect_a'].isin(top_connected_set) & 
+            df_con['suspect_b'].isin(top_connected_set)
         ]
 
-    # Build NetworkX graph
+    if filtered_suspects.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="No matching suspect network links.", showarrow=False, font=dict(size=16, color="#9CA3AF"))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig, {}
+
     G = nx.Graph()
     
-    # Add nodes with attributes
     for _, row in filtered_suspects.iterrows():
         G.add_node(
             int(row['id']),
@@ -330,7 +342,6 @@ def create_network_graph(suspects_df, connections_df, highlight_suspect_id=None)
             priors=int(row['priors_count'])
         )
         
-    # Add edges
     for _, row in filtered_connections.iterrows():
         G.add_edge(
             int(row['suspect_a']),
@@ -338,44 +349,84 @@ def create_network_graph(suspects_df, connections_df, highlight_suspect_id=None)
             relation=row['relation_type'],
             weight=int(row['strength'])
         )
-
         
-    # Compute Centrality Metrics
     deg_centrality = nx.degree_centrality(G)
     bet_centrality = nx.betweenness_centrality(G)
     
-    # Save metrics back to node attributes
-    for node in G.nodes():
-        G.nodes[node]['deg_cent'] = deg_centrality[node]
-        G.nodes[node]['bet_cent'] = bet_centrality[node]
+    pos = nx.spring_layout(G, k=0.55, iterations=60, seed=42)
+    
+    # ---------------- Edge Traces by Relation Type ----------------
+    relation_colors = {
+        "Gang Member": "#EF4444",   # Crimson Red
+        "Accomplice": "#F59E0B",    # Amber Yellow
+        "Co-arrestee": "#3B82F6",   # Electric Blue
+        "Relative": "#10B981"       # Emerald Green
+    }
+    
+    edge_traces = []
+    
+    # Group edges by relation_type
+    for rel_type, color in relation_colors.items():
+        rel_edges = [(u, v, d) for u, v, d in G.edges(data=True) if d.get('relation') == rel_type]
+        if not rel_edges:
+            continue
+            
+        edge_x = []
+        edge_y = []
+        mid_x = []
+        mid_y = []
+        mid_texts = []
         
-    # Generate node positions using spring layout
-    pos = nx.spring_layout(G, k=0.45, seed=42)
-    
-    # Extract Edge Lines
-    edge_x = []
-    edge_y = []
-    edge_text = []
-    
-    for edge in G.edges(data=True):
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_x.extend([x0, x1, None])
-        edge_y.extend([y0, y1, None])
+        for u, v, d in rel_edges:
+            x0, y0 = pos[u]
+            x1, y1 = pos[v]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+            
+            # Midpoint for hover tooltip
+            mx, my = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+            mid_x.append(mx)
+            mid_y.append(my)
+            
+            u_name = G.nodes[u]['name']
+            v_name = G.nodes[v]['name']
+            str_val = d.get('weight', 1)
+            mid_texts.append(
+                f"🔗 <b>Relation: {rel_type}</b><br>"
+                f"👥 <b>Connected:</b> {u_name} ↔ {v_name}<br>"
+                f"💪 <b>Link Strength:</b> {str_val}/5"
+            )
+            
+        # Line trace
+        edge_line_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=1.8, color=color),
+            hoverinfo='none',
+            mode='lines',
+            name=f"Link: {rel_type}",
+            showlegend=True
+        )
         
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=1.2, color='rgba(156, 163, 175, 0.45)'),
-        hoverinfo='none',
-        mode='lines'
-    )
-    
-    # Extract Nodes
+        # Midpoint hover trace
+        edge_mid_trace = go.Scatter(
+            x=mid_x, y=mid_y,
+            mode='markers',
+            marker=dict(size=6, color=color, opacity=0.8),
+            text=mid_texts,
+            hovertemplate="%{text}<extra></extra>",
+            name=f"Link Info ({rel_type})",
+            showlegend=False
+        )
+        
+        edge_traces.extend([edge_line_trace, edge_mid_trace])
+        
+    # ---------------- Node Trace ----------------
     node_x = []
     node_y = []
     node_color = []
     node_size = []
     node_text = []
+    node_labels = []
     node_border_width = []
     node_border_color = []
     
@@ -387,68 +438,97 @@ def create_network_graph(suspects_df, connections_df, highlight_suspect_id=None)
         attrs = G.nodes[node]
         node_color.append(attrs['risk'])
         
-        # Size based on degree centrality (scaled for visual size 12 to 38)
-        size = 12 + deg_centrality[node] * 70
+        # Size based on degree centrality (16 to 48)
+        size = 16 + deg_centrality[node] * 75
         node_size.append(size)
         
-        # Hover info
+        # Suspect Name label next to node for top connected gang hubs
+        if deg_centrality[node] > 0.08 or (highlight_suspect_id is not None and node == highlight_suspect_id):
+            node_labels.append(f"<b>{attrs['name']}</b>")
+        else:
+            node_labels.append("")
+            
+        # Rich Hover Card
+        r_val = attrs['risk']
+        r_color = "#EF4444" if r_val > 0.65 else ("#F59E0B" if r_val > 0.35 else "#10B981")
+        
         hover_txt = (
-            f"<b>Name:</b> {attrs['name']}<br>"
-            f"<b>Gang:</b> {attrs['gang']}<br>"
-            f"<b>Age:</b> {attrs['age']}<br>"
-            f"<b>Priors:</b> {attrs['priors']}<br>"
-            f"<b>Risk Score:</b> {attrs['risk']:.2f}<br>"
-            f"<b>Connections Count:</b> {G.degree(node)}<br>"
-            f"<b>Degree Centrality:</b> {deg_centrality[node]:.3f}<br>"
-            f"<b>Bridge Centrality (Betweenness):</b> {bet_centrality[node]:.3f}"
+            f"<b style='font-size: 1.15em; color: #FFFFFF;'>👤 {attrs['name']}</b><br>"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br>"
+            f"👥 <b>Gang:</b> <b>{attrs['gang']}</b><br>"
+            f"🎂 <b>Age:</b> {attrs['age']} &nbsp;|&nbsp; 🔒 <b>Arrests (Priors):</b> {attrs['priors']}<br>"
+            f"⚡ <b>ML Risk Score:</b> <b style='color: {r_color};'>{r_val:.2f}</b><br>"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━<br>"
+            f"🌐 <b>Network Degree (Links):</b> {G.degree(node)}<br>"
+            f"📊 <b>Degree Centrality:</b> {deg_centrality[node]:.3f}<br>"
+            f"🌉 <b>Bridge Centrality (Betweenness):</b> {bet_centrality[node]:.3f}"
         )
         node_text.append(hover_txt)
         
-        # Highlight selected suspect
         if highlight_suspect_id is not None and node == highlight_suspect_id:
-            node_border_width.append(3)
-            node_border_color.append("#10B981") # Bright Emerald green
+            node_border_width.append(3.5)
+            node_border_color.append("#10B981") # Bright Emerald
+        elif attrs['risk'] > 0.65:
+            node_border_width.append(2)
+            node_border_color.append("#EF4444") # Red border for high risk
         else:
             node_border_width.append(1)
-            node_border_color.append("#4B5563") # Gray
+            node_border_color.append("#4B5563")
             
     node_trace = go.Scatter(
         x=node_x, y=node_y,
-        mode='markers',
+        mode='markers+text',
+        text=node_labels,
+        textposition='top center',
+        textfont=dict(size=11, color='#F3F4F6', family='Outfit, sans-serif'),
         hoverinfo='text',
-        text=node_text,
+        hovertext=node_text,
+        hovertemplate="%{hovertext}<extra></extra>",
+        name="Suspect Profiles",
         marker=dict(
             showscale=True,
-            colorscale='Viridis', # Indigo-Yellow representing low to high risk
+            colorscale='Plasma',
             reversescale=False,
             color=node_color,
             size=node_size,
             colorbar=dict(
                 title='ML Risk Score',
-                thickness=15,
+                thickness=16,
                 x=1.02,
-                len=0.7,
-                ypad=0
+                len=0.75,
+                ypad=0,
+                tickfont=dict(color="#E5E7EB")
             ),
             line=dict(color=node_border_color, width=node_border_width)
         )
     )
     
-    # Create network figure
-    fig = go.Figure(data=[edge_trace, node_trace],
-                 layout=go.Layout(
-                    title=dict(text='<b>Criminal Network & Associates Link Analysis</b>', font=dict(size=16)),
-                    showlegend=False,
-                    hovermode='closest',
-                    margin=dict(b=0, l=0, r=0, t=40),
-                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)"
-                 )
+    fig = go.Figure(
+        data=[*edge_traces, node_trace],
+        layout=go.Layout(
+            title=dict(text='<b>Criminal Associates & Gang Link Analysis Graph</b>', font=dict(size=17, color="#FFFFFF")),
+            showlegend=True,
+            hovermode='closest',
+            margin=dict(b=10, l=10, r=10, t=45),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            dragmode='pan',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=-0.05,
+                xanchor="center",
+                x=0.5,
+                bgcolor="rgba(17, 24, 39, 0.85)",
+                bordercolor="rgba(75, 85, 99, 0.4)",
+                borderwidth=1,
+                font=dict(color="#E5E7EB", size=11)
+            )
+        )
     )
     
-    # Store metrics to return
     metrics = {
         node: {
             "name": G.nodes[node]["name"],

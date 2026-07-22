@@ -8,6 +8,10 @@ import plotly.graph_objects as go
 import database
 import analytics
 import visualizations
+import importlib
+importlib.reload(database)
+importlib.reload(analytics)
+importlib.reload(visualizations)
 
 # Load security passkeys securely
 try:
@@ -921,43 +925,64 @@ elif selected_page == "🧠 AI Predictive Models":
 
 # --- Page 4: Criminal Network Analysis ---
 elif selected_page == "🕸️ Criminal Network Analysis":
-    st.markdown("## Criminal Network & Link Analysis")
-    st.write("Analyze relationships, co-arrestees, and associates using Network Graphs. Identify gang leaders and bridge figures using network centrality metrics.")
+    st.markdown("## 🕸️ Criminal Social Network & Associate Linkage")
+    st.write("Perform criminal network link analysis across gangs, accomplices, and co-arrestees. Utilize graph centrality algorithms to identify syndicate leaders and cross-group bridge figures.")
     
-    col_net1, col_net2 = st.columns([2, 1])
+    # Gang Filter & Controls Header
+    col_f1, col_f2 = st.columns([1.5, 2])
+    with col_f1:
+        gang_options = ["All Gangs"] + sorted([g for g in df_suspects['gang_affiliation'].unique() if g != "None"])
+        sel_gang_net = st.selectbox("Filter Network by Syndicate / Gang", gang_options, key="sel_gang_network")
+    with col_f2:
+        st.markdown("<div style='padding-top: 25px; color: #9CA3AF; font-size: 0.85rem;'>💡 <b>Tip</b>: Use mouse scroll to zoom in/out of the network graph. Drag nodes or background to pan. Click on legend items to toggle specific link types (Gang Member, Accomplice, Co-arrestee, Relative).</div>", unsafe_allow_html=True)
+        
+    # Render Network Graph
+    fig_network, centrality_metrics = visualizations.create_network_graph(df_suspects, df_connections, selected_gang=sel_gang_net)
     
-    # Compute and plot network graph
-    # Render the graph first
-    fig_network, centrality_metrics = visualizations.create_network_graph(df_suspects, df_connections)
+    # KPI Row
+    if centrality_metrics:
+        cent_df = pd.DataFrame.from_dict(centrality_metrics, orient='index')
+        top_hub_name = cent_df.sort_values(by='degree_centrality', ascending=False).iloc[0]['name'] if not cent_df.empty else "N/A"
+        top_bridge_name = cent_df.sort_values(by='betweenness_centrality', ascending=False).iloc[0]['name'] if not cent_df.empty else "N/A"
+        
+        kpi_n1, kpi_n2, kpi_n3, kpi_n4 = st.columns(4)
+        with kpi_n1:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Network Suspects</div><div class="kpi-value">{len(cent_df)}</div></div>""", unsafe_allow_html=True)
+        with kpi_n2:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Total Links</div><div class="kpi-value">{cent_df['degree'].sum() // 2}</div></div>""", unsafe_allow_html=True)
+        with kpi_n3:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Primary Gang Hub</div><div class="kpi-value" style="font-size: 1.1rem; color: #60A5FA;">{top_hub_name}</div></div>""", unsafe_allow_html=True)
+        with kpi_n4:
+            st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Top Bridge Figure</div><div class="kpi-value" style="font-size: 1.1rem; color: #F59E0B;">{top_bridge_name}</div></div>""", unsafe_allow_html=True)
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+
+    col_net1, col_net2 = st.columns([2.2, 1])
     
     with col_net1:
-        st.plotly_chart(fig_network, use_container_width=True)
+        st.plotly_chart(fig_network, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
         
     with col_net2:
         st.markdown("### 🕸️ Key Network Influencers")
-        st.write("Identified via graph network degree and betweenness centrality. High degree represents gang hubs; high betweenness represents bridge figures between different gangs.")
+        st.write("Calculated via Degree Centrality (Gang Hubs) and Betweenness Centrality (Bridge Connectors).")
         
         if centrality_metrics:
-            cent_df = pd.DataFrame.from_dict(centrality_metrics, orient='index')
-            # Sort by degree centrality
             cent_sorted = cent_df.sort_values(by='degree_centrality', ascending=False).head(5)
-            
-            st.write("**Top Associate Hubs (Highest Connections)**")
+            st.write("**Top Associate Hubs (Gang Leaders)**")
             st.dataframe(
                 cent_sorted[['name', 'degree', 'degree_centrality']].rename(
-                    columns={'name': 'Suspect Name', 'degree': 'Total Links', 'degree_centrality': 'Centrality Score'}
-                ),
+                    columns={'name': 'Suspect Name', 'degree': 'Links', 'degree_centrality': 'Degree Centrality'}
+                ).assign(**{'Degree Centrality': lambda x: x['Degree Centrality'].map('{:.3f}'.format)}),
                 use_container_width=True,
                 hide_index=True
             )
             
-            # Sort by bridge centrality
             bridge_sorted = cent_df.sort_values(by='betweenness_centrality', ascending=False).head(5)
             st.write("**Top Bridge Figures (Cross-Group Connectors)**")
             st.dataframe(
                 bridge_sorted[['name', 'betweenness_centrality']].rename(
                     columns={'name': 'Suspect Name', 'betweenness_centrality': 'Bridge Score'}
-                ),
+                ).assign(**{'Bridge Score': lambda x: x['Bridge Score'].map('{:.3f}'.format)}),
                 use_container_width=True,
                 hide_index=True
             )
