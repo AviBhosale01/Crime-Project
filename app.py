@@ -729,7 +729,7 @@ elif selected_page == "🔍 Search & Explorer":
 # --- Page 3: AI Predictive Models ---
 elif selected_page == "🧠 AI Predictive Models":
     st.markdown("## AI/ML Forecasting & Police Intelligence Insights")
-    st.write("Machine learning predictive intelligence suite for police commanders: forecast incident severity, assess suspect recidivism risk, evaluate socio-economic crime drivers, and detect temporal anomaly surges.")
+    st.write("Production-grade machine learning predictive intelligence suite for police commanders: forecast incident severity, assess suspect recidivism risk, evaluate socio-economic crime drivers, and detect temporal anomaly surges.")
     
     tab_predict, tab_suspect, tab_socio, tab_anomaly = st.tabs([
         "🔮 Incident Risk Prediction",
@@ -741,12 +741,25 @@ elif selected_page == "🧠 AI Predictive Models":
     # Tab 1: Incident Severity Prediction
     with tab_predict:
         st.markdown("### Predict Potential Crime Severity")
-        st.write("Train a Random Forest Classifier on historical logs to predict whether a crime incident will be **Low, Medium, or High** severity based on spatio-temporal inputs and district demographics.")
+        st.write("Train a Random Forest Classifier on historical crime logs to forecast incident severity (**Low, Medium, or High**) based on spatio-temporal inputs, district socio-economics, and crime category.")
         
         # Train model
         model_dict, train_msg = analytics.train_severity_predictor(df_crimes)
         
         if model_dict:
+            # Model Validation Performance Metrics Banner
+            m1, m2, m3, m4 = st.columns(4)
+            with m1:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Test Validation Accuracy</div><div class="kpi-value" style="color: #10B981;">{model_dict['accuracy']*100:.1f}%</div></div>""", unsafe_allow_html=True)
+            with m2:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">F1 Macro Score</div><div class="kpi-value" style="color: #60A5FA;">{model_dict['f1_score']:.3f}</div></div>""", unsafe_allow_html=True)
+            with m3:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">5-Fold CV Accuracy</div><div class="kpi-value" style="color: #F59E0B;">{model_dict['cv_accuracy_mean']*100:.1f}% ± {model_dict['cv_accuracy_std']*100:.1f}%</div></div>""", unsafe_allow_html=True)
+            with m4:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Training / Test Logs</div><div class="kpi-value" style="font-size: 1.1rem;">{model_dict['train_samples']} / {model_dict['test_samples']}</div></div>""", unsafe_allow_html=True)
+                
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             col_in1, col_in2 = st.columns(2)
             
             with col_in1:
@@ -771,6 +784,8 @@ elif selected_page == "🧠 AI Predictive Models":
                         "crime_type": in_type,
                         "hour": in_hour,
                         "day_of_week": day_idx,
+                        "month": datetime.now().month,
+                        "is_weekend": 1.0 if day_idx >= 5 else 0.0,
                         "unemployment_rate": dist_row['unemployment_rate'],
                         "poverty_index": dist_row['poverty_index'],
                         "median_income": dist_row['median_income'],
@@ -790,12 +805,10 @@ elif selected_page == "🧠 AI Predictive Models":
                         </div>""", unsafe_allow_html=True
                     )
                     
-                    # Probabilities breakdown
                     st.write("**Model Confidence Breakdown:**")
                     for cls, prob in class_probs.items():
                         st.progress(float(prob), text=f"{cls} Severity Probability: {prob*100:.1f}%")
                         
-                    # Tactical Advisory
                     st.markdown("---")
                     st.markdown("##### 🛡️ Tactical Police Advisory")
                     if pred_class == "High":
@@ -806,17 +819,31 @@ elif selected_page == "🧠 AI Predictive Models":
                         st.success("🟢 **ROUTINE DIRECTIVE**: Log incident entry and assign standard beat constable coverage.")
                         
             st.markdown("<br><hr style='border-top: 1px solid rgba(75, 85, 99, 0.2);'>", unsafe_allow_html=True)
-            st.markdown("#### Random Forest Feature Importance Analysis")
-            st.write("Identify top spatio-temporal and socio-economic variables influencing severity prediction:")
             
-            feat_imp = model_dict['feature_importance'].head(8).reset_index()
-            feat_imp.columns = ['Feature', 'Importance']
-            feat_imp['Feature'] = feat_imp['Feature'].str.replace('dist_', 'District: ').str.replace('type_', 'Type: ').str.replace('_', ' ').str.title()
-            
-            fig_imp = px.bar(feat_imp, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Purples')
-            fig_imp.update_layout(height=280, margin=dict(l=20, r=20, t=10, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", coloraxis_showscale=False)
-            fig_imp.update_yaxes(categoryorder="total ascending")
-            st.plotly_chart(fig_imp, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+            col_diag1, col_diag2 = st.columns([1.2, 1])
+            with col_diag1:
+                st.markdown("#### Random Forest Feature Importance Analysis")
+                st.write("Identify top spatio-temporal and socio-economic variables influencing severity prediction:")
+                
+                feat_imp = model_dict['feature_importance'].head(8).reset_index()
+                feat_imp.columns = ['Feature', 'Importance']
+                feat_imp['Feature'] = feat_imp['Feature'].str.replace('dist_', 'District: ').str.replace('type_', 'Type: ').str.replace('_', ' ').str.title()
+                
+                fig_imp = px.bar(feat_imp, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Purples')
+                fig_imp.update_layout(height=280, margin=dict(l=20, r=20, t=10, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", coloraxis_showscale=False)
+                fig_imp.update_yaxes(categoryorder="total ascending")
+                st.plotly_chart(fig_imp, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+                
+            with col_diag2:
+                st.markdown("#### Model Confusion Matrix Diagnostics")
+                st.write("Validation test predictions vs actual ground-truth crime logs:")
+                cm_df = pd.DataFrame(
+                    model_dict['confusion_matrix'],
+                    index=[f"Actual {c}" for c in model_dict['classes']],
+                    columns=[f"Pred {c}" for c in model_dict['classes']]
+                )
+                st.dataframe(cm_df, use_container_width=True)
+                st.caption(f"Precision: **{model_dict['precision']*100:.1f}%** | Recall: **{model_dict['recall']*100:.1f}%**")
             
         else:
             st.warning(train_msg)
@@ -829,6 +856,19 @@ elif selected_page == "🧠 AI Predictive Models":
         sus_model_dict, sus_msg = analytics.train_recidivism_predictor(df_suspects)
         
         if sus_model_dict:
+            # Model Metrics Banner
+            sm1, sm2, sm3, sm4 = st.columns(4)
+            with sm1:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Model R² Score</div><div class="kpi-value" style="color: #10B981;">{sus_model_dict['r2_score']:.3f}</div></div>""", unsafe_allow_html=True)
+            with sm2:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Mean Absolute Error (MAE)</div><div class="kpi-value" style="color: #60A5FA;">{sus_model_dict['mae']:.3f}</div></div>""", unsafe_allow_html=True)
+            with sm3:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">RMSE Metric</div><div class="kpi-value" style="color: #F59E0B;">{sus_model_dict['rmse']:.3f}</div></div>""", unsafe_allow_html=True)
+            with sm4:
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Suspect Registry Dataset</div><div class="kpi-value" style="font-size: 1.1rem;">{sus_model_dict['total_suspects']} Suspects</div></div>""", unsafe_allow_html=True)
+                
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             col_sus1, col_sus2 = st.columns([1, 1.2])
             with col_sus1:
                 st.markdown("#### Input Suspect Profile")
@@ -843,17 +883,14 @@ elif selected_page == "🧠 AI Predictive Models":
                 if calc_sus:
                     pred_risk = analytics.predict_suspect_risk(sus_model_dict, s_age, s_priors, s_gang)
                     
-                    # Render Radial Gauge Chart
                     fig_gauge = visualizations.create_recidivism_gauge_chart(pred_risk)
                     st.plotly_chart(fig_gauge, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
                     
-                    # Calculate percentile in Pune suspect pool
                     higher_count = len(df_suspects[df_suspects['risk_score'] > pred_risk])
                     total_sus = len(df_suspects)
                     pct = (higher_count / total_sus) * 100.0
                     st.caption(f"📊 **Database Percentile**: This profile risks higher than **{100.0 - pct:.1f}%** of suspects in the Pune Crime Registry.")
                     
-                    # Police Action Directive Box
                     st.markdown("##### 👮 Police Actionable Directive")
                     if pred_risk > 0.65:
                         st.error("🚨 **CRITICAL SURVEILLANCE DIRECTIVE**: High Recidivist Risk Index (> 0.65). List under History-Sheeter Register, initiate electronic & physical surveillance, and evaluate CrPC Sec 110 preventive action.")
@@ -867,7 +904,7 @@ elif selected_page == "🧠 AI Predictive Models":
     # Tab 3: Socio-Economic Correlations
     with tab_socio:
         st.markdown("### Socio-Economic Correlation Matrix")
-        st.write("Examine correlations between a district's socio-economic profiles and the total occurrences of crimes in those locations.")
+        st.write("Examine statistical correlations between a district's socio-economic profiles (unemployment, poverty, income, education, density) and the total occurrences of crimes.")
         
         st.markdown("""
         > 💡 **Police Intelligence Briefing**: Socio-economic indicators provide empirical data for beat allocation. Areas with high poverty or unemployment indices show elevated property crime frequencies, supporting targeted community policing interventions.
@@ -887,35 +924,66 @@ elif selected_page == "🧠 AI Predictive Models":
                 
                 fig_scatter = visualizations.create_correlation_scatter(df_crimes, df_districts, sel_feat)
                 st.plotly_chart(fig_scatter, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+                
+            # Table of exact statistical coefficients
+            st.markdown("#### 📐 Statistical Correlation Coefficients (Pearson r & Spearman ρ)")
+            st.dataframe(
+                corr_df.rename(columns={
+                    'feature': 'Socio-Economic Feature',
+                    'pearson_r': 'Pearson Correlation (r)',
+                    'p_value': 'Pearson p-value',
+                    'spearman_rho': 'Spearman Rank (ρ)',
+                    'spearman_p': 'Spearman p-value'
+                }).assign(
+                    **{
+                        'Socio-Economic Feature': lambda x: x['Socio-Economic Feature'].str.replace('_', ' ').str.title(),
+                        'Pearson Correlation (r)': lambda x: x['Pearson Correlation (r)'].map('{:+.3f}'.format),
+                        'Pearson p-value': lambda x: x['Pearson p-value'].map('{:.4f}'.format),
+                        'Spearman Rank (ρ)': lambda x: x['Spearman Rank (ρ)'].map('{:+.3f}'.format),
+                        'Spearman p-value': lambda x: x['Spearman p-value'].map('{:.4f}'.format)
+                    }
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
         else:
             st.info("No correlation data available.")
             
     # Tab 4: Rolling Anomaly Detection
     with tab_anomaly:
-        st.markdown("### Historical Timeline & Anomaly Detection")
-        st.write("Apply a 14-day rolling statistical Z-score threshold (threshold = 2.0) on daily aggregated crime logs to isolate historical anomalies and trend shifts.")
+        st.markdown("### Historical Timeline & Dual Anomaly Detection")
+        st.write("Combines 14-day rolling statistical Z-score thresholding with multidimensional **Isolation Forest ML** anomaly detection on daily crime logs.")
         
-        daily_stats, _ = analytics.detect_anomalies_rolling(df_crimes)
+        col_an1, col_an2 = st.columns(2)
+        with col_an1:
+            sel_window = st.slider("Rolling Baseline Window (Days)", 7, 30, 14, key="slider_anomaly_window")
+        with col_an2:
+            sel_z_thresh = st.slider("Z-Score Anomaly Threshold (σ)", 1.5, 3.0, 2.0, step=0.1, key="slider_z_thresh")
+            
+        daily_stats, df_pivot = analytics.detect_anomalies_rolling(df_crimes, window_days=sel_window, threshold_z=sel_z_thresh)
         
         if not daily_stats.empty:
             fig_anomaly = visualizations.create_anomaly_chart(daily_stats)
             st.plotly_chart(fig_anomaly, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             
-            # Anomaly Surge Log Table for Police Commanders
             anomalies_only = daily_stats[daily_stats['is_anomaly'] == True].sort_values(by='date', ascending=False)
             if not anomalies_only.empty:
                 st.markdown("#### 🚨 Historical Crime Anomaly Surge Register")
                 st.dataframe(
-                    anomalies_only[['date', 'crime_count', 'rolling_mean', 'z_score']].rename(
+                    anomalies_only[['date', 'crime_count', 'rolling_mean', 'z_score', 'iso_anomaly']].rename(
                         columns={
                             'date': 'Anomaly Date',
                             'crime_count': 'Actual Incident Count',
-                            'rolling_mean': 'Expected 14-Day Baseline',
-                            'z_score': 'Statistical Z-Score (σ)'
+                            'rolling_mean': f'Expected {sel_window}-Day Baseline',
+                            'z_score': 'Statistical Z-Score (σ)',
+                            'iso_anomaly': 'Isolation Forest ML Outlier'
                         }
                     ).assign(
-                        **{'Anomaly Date': lambda x: pd.to_datetime(x['Anomaly Date']).dt.strftime('%Y-%m-%d'),
-                           'Statistical Z-Score (σ)': lambda x: x['Statistical Z-Score (σ)'].map('{:+.2f} σ'.format)}
+                        **{
+                            'Anomaly Date': lambda x: pd.to_datetime(x['Anomaly Date']).dt.strftime('%Y-%m-%d'),
+                            'Statistical Z-Score (σ)': lambda x: x['Statistical Z-Score (σ)'].map('{:+.2f} σ'.format),
+                            'Isolation Forest ML Outlier': lambda x: x['Isolation Forest ML Outlier'].map(lambda v: '🚨 Confirmed Outlier' if v else '⚪ Baseline')
+                        }
                     ),
                     use_container_width=True,
                     hide_index=True
