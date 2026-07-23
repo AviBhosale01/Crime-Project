@@ -1831,7 +1831,13 @@ elif selected_page == "💬 AI Intel Chatbot":
             with st.chat_message("assistant"):
                 status_placeholder = st.status("🤖 Analyzing question & writing SQL query...", expanded=True)
                 
-                sql_system = """You are an expert SQL assistant for a Crime Analytics platform in Pune, Maharashtra.
+                # Fetch live real-time system clock
+                now_dt = datetime.now()
+                live_datetime_str = now_dt.strftime("%A, %d %B %Y, %I:%M:%S %p IST")
+                live_date_iso = now_dt.strftime("%Y-%m-%d")
+                
+                sql_system = f"""You are an expert SQL assistant for a Crime Analytics platform in Pune, Maharashtra.
+CURRENT REAL-TIME SYSTEM DATE: {live_date_iso} ({live_datetime_str}).
 The database is SQLite. The schema has 4 tables:
 1. districts (id, name, unemployment_rate, poverty_index, median_income, education_index, population_density, center_lat, center_lon)
 2. suspects (id, name, age, gang_affiliation, priors_count, risk_score)
@@ -1861,7 +1867,7 @@ Response:
 SELECT c.crime_type, c.severity, c.timestamp, d.name as district, c.status FROM crimes c JOIN suspects s ON c.suspect_id = s.id JOIN districts d ON c.district_id = d.id WHERE s.name = 'Rahul Pawar';
 ```
 
-If the question is a greeting, general conversational message, or cannot be answered by querying the database, respond with exactly:
+If the question is a greeting, time/date query, general conversational message, or cannot be answered by querying the database, respond with exactly:
 NO_SQL
 """
                 try:
@@ -1938,7 +1944,10 @@ NO_SQL
                     status_placeholder2 = st.empty()
                     status_placeholder2.info("📝 Formulating response briefing...")
                     
-                    explain_system = """You are the AI Intelligence Briefing Officer for Pune Police Command Center.
+                    explain_system = f"""You are the AI Intelligence Briefing Officer for Pune Police Command Center.
+CURRENT REAL-TIME SYSTEM CLOCK: {live_datetime_str} (Date: {live_date_iso}).
+IMPORTANT INSTRUCTION ON TIME/DATE: You HAVE direct access to the live system clock ({live_datetime_str}). If the user asks for today's date, current time, or live system status, state the exact date and time immediately and accurately. NEVER say "I do not have access to real-time system clocks".
+
 Interpret database results clearly and professionally for police commanders.
 Keep responses concise, factual, and formatted with clean Markdown bullet points. Refer to Pune, Maharashtra context.
 """
