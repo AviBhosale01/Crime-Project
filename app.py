@@ -32,7 +32,24 @@ st.set_page_config(
 )
 
 # Custom CSS for Premium Dark Theme & Glassmorphic Dashboard
+# SEO & HTML Accessibility Meta Tags
 st.markdown("""
+<head>
+    <meta name="description" content="AI-Driven Crime Intelligence Command Center: Real-time geospatial crime analytics, risk scoring, 30-day time-series forecasting, and criminal social network linkage platform.">
+    <meta name="keywords" content="Crime Analytics, AI Crime Prediction, Police Intelligence, Recidivism Risk, DBSCAN Hotspots, Time-Series Forecasting">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "GovernmentService",
+      "name": "Crime Intelligence Command Center",
+      "provider": {
+        "@type": "GovernmentOrganization",
+        "name": "Pune Police Department"
+      },
+      "description": "Real-time AI-Powered Geospatial Crime Analytics, Risk Scoring & Criminal Network Linkage Platform"
+    }
+    </script>
+</head>
 <style>
     /* Dark Theme Base */
     .stApp {
@@ -54,10 +71,15 @@ st.markdown("""
         letter-spacing: -0.025em;
     }
     
+    /* Muted text high-contrast override for accessibility (WCAG AA/AAA) */
+    p, span, label, caption, .stCaption {
+        color: #cbd5e1 !important;
+    }
+    
     /* Glowing card indicators */
     .kpi-card {
         background: rgba(17, 24, 39, 0.85);
-        border: 1px solid rgba(59, 130, 246, 0.2);
+        border: 1px solid rgba(59, 130, 246, 0.3);
         border-radius: 12px;
         padding: 20px;
         box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.25);
@@ -66,11 +88,11 @@ st.markdown("""
     }
     .kpi-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(59, 130, 246, 0.5);
+        border-color: rgba(59, 130, 246, 0.6);
     }
     .kpi-title {
         font-size: 0.875rem;
-        color: #9ca3af;
+        color: #cbd5e1 !important;
         text-transform: uppercase;
         font-weight: 600;
         margin-bottom: 8px;
@@ -78,7 +100,7 @@ st.markdown("""
     .kpi-value {
         font-size: 2rem;
         font-weight: 700;
-        color: #ffffff;
+        color: #ffffff !important;
     }
     .kpi-trend {
         font-size: 0.775rem;
@@ -86,13 +108,13 @@ st.markdown("""
         font-weight: 500;
     }
     .trend-up {
-        color: #ef4444;
+        color: #f87171 !important;
     }
     .trend-down {
-        color: #10b981;
+        color: #34d399 !important;
     }
     
-    /* custom badge/alert styling */
+    /* Custom badge/alert styling */
     .anomaly-alert {
         padding: 12px;
         background-color: rgba(239, 68, 68, 0.15);
@@ -104,7 +126,7 @@ st.markdown("""
     /* Button custom styles */
     div.stButton > button {
         background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        color: white;
+        color: white !important;
         border: none;
         padding: 8px 20px;
         border-radius: 8px;
@@ -116,11 +138,13 @@ st.markdown("""
         border: none;
     }
     
-    /* Adjust map containers */
+    /* Adjust map & chart containers to prevent layout shifts (CLS fix) */
     .stPlotlyChart {
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid rgba(75, 85, 99, 0.2);
+        min-height: 380px;
+        display: block;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -728,20 +752,21 @@ elif selected_page == "🔍 Search & Explorer":
 
 # --- Page 3: AI Predictive Models ---
 elif selected_page == "🧠 AI Predictive Models":
-    st.markdown("## AI/ML Forecasting & Police Intelligence Insights")
-    st.write("Production-grade machine learning predictive intelligence suite for police commanders: forecast incident severity, assess suspect recidivism risk, evaluate socio-economic crime drivers, and detect temporal anomaly surges.")
+    st.markdown("## 🧠 AI/ML Forecasting & Scientific Predictive Intelligence")
+    st.write("Production-grade machine learning predictive suite for police commanders: evaluate incident severity, forecast suspect recidivism risk, generate 30-day forward time-series crime projections, analyze socio-economic correlations, and detect rolling anomaly spikes.")
     
-    tab_predict, tab_suspect, tab_socio, tab_anomaly = st.tabs([
-        "🔮 Incident Risk Prediction",
+    tab_predict, tab_suspect, tab_forecast, tab_socio, tab_anomaly = st.tabs([
+        "🔮 Incident Severity Classifier",
         "👤 Recidivism Risk (Suspects)",
+        "📈 30-Day Forward Forecasting",
         "📊 Socio-Economic Correlations",
-        "📈 Rolling Anomaly Detection"
+        "🚨 Rolling Anomaly Detection"
     ])
     
-    # Tab 1: Incident Severity Prediction
+    # Tab 1: Incident Severity Classification
     with tab_predict:
         st.markdown("### Predict Potential Crime Severity")
-        st.write("Train a Random Forest Classifier on historical crime logs to forecast incident severity (**Low, Medium, or High**) based on spatio-temporal inputs, district socio-economics, and crime category.")
+        st.write("Random Forest Classifier trained on historical crime logs using spatio-temporal features, district socio-economics, and category indicators with 80/20 train/test evaluation and 5-fold cross-validation.")
         
         # Train model
         model_dict, train_msg = analytics.train_severity_predictor(df_crimes)
@@ -750,13 +775,13 @@ elif selected_page == "🧠 AI Predictive Models":
             # Model Validation Performance Metrics Banner
             m1, m2, m3, m4 = st.columns(4)
             with m1:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Test Validation Accuracy</div><div class="kpi-value" style="color: #10B981;">{model_dict['accuracy']*100:.1f}%</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Out-of-Sample Accuracy</div><div class="kpi-value" style="color: #34d399;">{model_dict['accuracy']*100:.1f}%</div></div>""", unsafe_allow_html=True)
             with m2:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">F1 Macro Score</div><div class="kpi-value" style="color: #60A5FA;">{model_dict['f1_score']:.3f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Weighted F1-Score</div><div class="kpi-value" style="color: #60a5fa;">{model_dict['f1_score']:.3f}</div></div>""", unsafe_allow_html=True)
             with m3:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">5-Fold CV Accuracy</div><div class="kpi-value" style="color: #F59E0B;">{model_dict['cv_accuracy_mean']*100:.1f}% ± {model_dict['cv_accuracy_std']*100:.1f}%</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">5-Fold CV Accuracy</div><div class="kpi-value" style="color: #fbbf24;">{model_dict['cv_mean']*100:.1f}% ± {model_dict['cv_std']*100:.1f}%</div></div>""", unsafe_allow_html=True)
             with m4:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Training / Test Logs</div><div class="kpi-value" style="font-size: 1.1rem;">{model_dict['train_samples']} / {model_dict['test_samples']}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Dataset Size</div><div class="kpi-value" style="font-size: 1.1rem; color: #a855f7;">{len(df_crimes):,} Incident Logs</div></div>""", unsafe_allow_html=True)
                 
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -823,7 +848,7 @@ elif selected_page == "🧠 AI Predictive Models":
             col_diag1, col_diag2 = st.columns([1.2, 1])
             with col_diag1:
                 st.markdown("#### Random Forest Feature Importance Analysis")
-                st.write("Identify top spatio-temporal and socio-economic variables influencing severity prediction:")
+                st.write("Top spatio-temporal and socio-economic variables influencing severity prediction:")
                 
                 feat_imp = model_dict['feature_importance'].head(8).reset_index()
                 feat_imp.columns = ['Feature', 'Importance']
@@ -832,18 +857,13 @@ elif selected_page == "🧠 AI Predictive Models":
                 fig_imp = px.bar(feat_imp, x='Importance', y='Feature', orientation='h', color='Importance', color_continuous_scale='Purples')
                 fig_imp.update_layout(height=280, margin=dict(l=20, r=20, t=10, b=20), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", coloraxis_showscale=False)
                 fig_imp.update_yaxes(categoryorder="total ascending")
-                st.plotly_chart(fig_imp, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+                st.plotly_chart(fig_imp, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
                 
             with col_diag2:
                 st.markdown("#### Model Confusion Matrix Diagnostics")
-                st.write("Validation test predictions vs actual ground-truth crime logs:")
-                cm_df = pd.DataFrame(
-                    model_dict['confusion_matrix'],
-                    index=[f"Actual {c}" for c in model_dict['classes']],
-                    columns=[f"Pred {c}" for c in model_dict['classes']]
-                )
-                st.dataframe(cm_df, use_container_width=True)
-                st.caption(f"Precision: **{model_dict['precision']*100:.1f}%** | Recall: **{model_dict['recall']*100:.1f}%**")
+                st.write("Validation test set predictions vs ground-truth crime severity:")
+                fig_cm = visualizations.create_confusion_matrix_chart(model_dict['confusion_matrix'], model_dict['classes'])
+                st.plotly_chart(fig_cm, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
             
         else:
             st.warning(train_msg)
@@ -851,7 +871,7 @@ elif selected_page == "🧠 AI Predictive Models":
     # Tab 2: Suspect Recidivism Prediction
     with tab_suspect:
         st.markdown("### Suspect Recidivism Risk Forecaster")
-        st.write("Analyze a suspect's demographic and arrest logs dynamically using a Random Forest Regressor to compute a **Recidivism Risk Index**.")
+        st.write("Random Forest Regressor evaluating suspect demographic & arrest history to compute a **Recidivism Risk Index**.")
         
         sus_model_dict, sus_msg = analytics.train_recidivism_predictor(df_suspects)
         
@@ -859,13 +879,13 @@ elif selected_page == "🧠 AI Predictive Models":
             # Model Metrics Banner
             sm1, sm2, sm3, sm4 = st.columns(4)
             with sm1:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Model R² Score</div><div class="kpi-value" style="color: #10B981;">{sus_model_dict['r2_score']:.3f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Model R² Score</div><div class="kpi-value" style="color: #34d399;">{sus_model_dict['r2']:.3f}</div></div>""", unsafe_allow_html=True)
             with sm2:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Mean Absolute Error (MAE)</div><div class="kpi-value" style="color: #60A5FA;">{sus_model_dict['mae']:.3f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Mean Absolute Error (MAE)</div><div class="kpi-value" style="color: #60a5fa;">{sus_model_dict['mae']:.3f}</div></div>""", unsafe_allow_html=True)
             with sm3:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">RMSE Metric</div><div class="kpi-value" style="color: #F59E0B;">{sus_model_dict['rmse']:.3f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">RMSE Metric</div><div class="kpi-value" style="color: #fbbf24;">{sus_model_dict['rmse']:.3f}</div></div>""", unsafe_allow_html=True)
             with sm4:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Suspect Registry Dataset</div><div class="kpi-value" style="font-size: 1.1rem;">{sus_model_dict['total_suspects']} Suspects</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">5-Fold CV R² Mean</div><div class="kpi-value" style="color: #a855f7;">{sus_model_dict['cv_r2_mean']:.3f}</div></div>""", unsafe_allow_html=True)
                 
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -884,7 +904,7 @@ elif selected_page == "🧠 AI Predictive Models":
                     pred_risk = analytics.predict_suspect_risk(sus_model_dict, s_age, s_priors, s_gang)
                     
                     fig_gauge = visualizations.create_recidivism_gauge_chart(pred_risk)
-                    st.plotly_chart(fig_gauge, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+                    st.plotly_chart(fig_gauge, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
                     
                     higher_count = len(df_suspects[df_suspects['risk_score'] > pred_risk])
                     total_sus = len(df_suspects)
@@ -900,6 +920,40 @@ elif selected_page == "🧠 AI Predictive Models":
                         st.success("🟢 **ROUTINE RECORD DIRECTIVE**: Low Recidivist Risk Index (< 0.35). Maintain standard station records; no active surveillance required.")
         else:
             st.warning(sus_msg)
+            
+    # Tab 3: 30-Day Forward Crime Forecasting
+    with tab_forecast:
+        st.markdown("### 📈 30-Day Time-Series Crime Forecasting")
+        st.write("Predict future daily crime incident volumes across Pune using lag-based regression time-series forecasting with **95% Confidence Intervals**.")
+        
+        hist_df, forecast_df = analytics.forecast_future_crimes(df_crimes, days_to_forecast=30)
+        
+        if not forecast_df.empty:
+            fig_fc = visualizations.create_forecast_chart(hist_df, forecast_df)
+            st.plotly_chart(fig_fc, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False})
+            
+            st.markdown("#### 📅 30-Day Projected Incident Surge Register")
+            st.dataframe(
+                forecast_df[['date', 'predicted_count', 'lower_ci', 'upper_ci']].rename(
+                    columns={
+                        'date': 'Forecast Date',
+                        'predicted_count': 'Projected Daily Crimes',
+                        'lower_ci': 'Lower 95% Bound',
+                        'upper_ci': 'Upper 95% Bound'
+                    }
+                ).assign(
+                    **{
+                        'Forecast Date': lambda x: pd.to_datetime(x['Forecast Date']).dt.strftime('%Y-%m-%d'),
+                        'Projected Daily Crimes': lambda x: x['Projected Daily Crimes'].map('{:.1f}'.format),
+                        'Lower 95% Bound': lambda x: x['Lower 95% Bound'].map('{:.1f}'.format),
+                        'Upper 95% Bound': lambda x: x['Upper 95% Bound'].map('{:.1f}'.format)
+                    }
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("Insufficient historical crime log timeline to generate 30-day forecast.")
             
     # Tab 3: Socio-Economic Correlations
     with tab_socio:

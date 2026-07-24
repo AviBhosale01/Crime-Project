@@ -778,3 +778,119 @@ def create_correlation_scatter(crimes_df, districts_df, feature):
         height=320
     )
     return fig
+
+def create_confusion_matrix_chart(cm, classes):
+    """
+    Generate an annotated Plotly heatmap for model out-of-sample confusion matrix.
+    """
+    z = cm
+    x = [f"Pred: {c}" for c in classes]
+    y = [f"True: {c}" for c in classes]
+    
+    fig = px.imshow(
+        z,
+        x=x,
+        y=y,
+        color_continuous_scale="Purples",
+        aspect="auto",
+        text_auto=True,
+        title="<b>Out-of-Sample Confusion Matrix (Test Set)</b>"
+    )
+    
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=40, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=280,
+        coloraxis_showscale=False,
+        font=dict(color="#F3F4F6")
+    )
+    return fig
+
+def create_forecast_chart(historical_df, forecast_df):
+    """
+    Generate interactive line chart showing daily historical crimes, 30-day forward predictions,
+    and shaded 95% Confidence Intervals.
+    """
+    if historical_df.empty or forecast_df.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="No Forecast Data Available", showarrow=False)
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig
+        
+    fig = go.Figure()
+    
+    # 1. Historical daily crime count
+    hist_sub = historical_df.tail(90)
+    fig.add_trace(go.Scatter(
+        x=hist_sub['date'],
+        y=hist_sub['crime_count'],
+        mode='lines',
+        name='Historical Daily Crimes',
+        line=dict(color='#3B82F6', width=2)
+    ))
+    
+    # 2. Shaded 95% Confidence Interval band for forecast
+    fig.add_trace(go.Scatter(
+        x=pd.concat([forecast_df['date'], forecast_df['date'][::-1]]),
+        y=pd.concat([forecast_df['upper_ci'], forecast_df['lower_ci'][::-1]]),
+        fill='toself',
+        fillcolor='rgba(147, 197, 253, 0.2)',
+        line=dict(color='rgba(255,255,255,0)'),
+        hoverinfo="skip",
+        name='95% Confidence Band',
+        showlegend=True
+    ))
+    
+    # 3. 30-Day Forward Forecast Line
+    fig.add_trace(go.Scatter(
+        x=forecast_df['date'],
+        y=forecast_df['predicted_count'],
+        mode='lines+markers',
+        name='30-Day ML Forecast',
+        line=dict(color='#A855F7', width=3, dash='dash'),
+        marker=dict(size=6, color='#C084FC')
+    ))
+    
+    fig.update_layout(
+        title="<b>30-Day Time-Series Crime Forecasting with 95% Confidence Intervals</b>",
+        xaxis_title="Date",
+        yaxis_title="Predicted Daily Crime Count",
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=50, b=20),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, bgcolor="rgba(17, 24, 39, 0.8)"),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    return fig
+
+def create_cv_score_chart(cv_scores):
+    """
+    Generate bar chart showing accuracy score across 5 cross-validation folds.
+    """
+    folds_df = pd.DataFrame({
+        'Fold': [f"Fold {i+1}" for i in range(len(cv_scores))],
+        'Accuracy': cv_scores * 100.0
+    })
+    
+    fig = px.bar(
+        folds_df,
+        x='Fold',
+        y='Accuracy',
+        text_auto='.1f',
+        color='Accuracy',
+        color_continuous_scale='Purples',
+        title="<b>5-Fold Cross-Validation Accuracy (%)</b>"
+    )
+    
+    fig.update_traces(textposition='outside')
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=40, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=280,
+        coloraxis_showscale=False,
+        yaxis=dict(range=[0, 105])
+    )
+    return fig
+
