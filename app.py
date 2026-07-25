@@ -993,25 +993,26 @@ elif selected_page == "🧠 AI Predictive Models":
                 
             # Table of exact statistical coefficients
             st.markdown("#### 📐 Statistical Correlation Coefficients (Pearson r & Spearman ρ)")
-            st.dataframe(
-                corr_df.rename(columns={
-                    'feature': 'Socio-Economic Feature',
-                    'pearson_r': 'Pearson Correlation (r)',
-                    'p_value': 'Pearson p-value',
-                    'spearman_rho': 'Spearman Rank (ρ)',
-                    'spearman_p': 'Spearman p-value'
-                }).assign(
-                    **{
-                        'Socio-Economic Feature': lambda x: x['Socio-Economic Feature'].str.replace('_', ' ').str.title(),
-                        'Pearson Correlation (r)': lambda x: x['Pearson Correlation (r)'].map('{:+.3f}'.format),
-                        'Pearson p-value': lambda x: x['Pearson p-value'].map('{:.4f}'.format),
-                        'Spearman Rank (ρ)': lambda x: x['Spearman Rank (ρ)'].map('{:+.3f}'.format),
-                        'Spearman p-value': lambda x: x['Spearman p-value'].map('{:.4f}'.format)
-                    }
-                ),
-                use_container_width=True,
-                hide_index=True
-            )
+            display_corr = corr_df.copy()
+            if 'feature' in display_corr.columns:
+                display_corr['feature'] = display_corr['feature'].astype(str).str.replace('_', ' ').str.title()
+            if 'pearson_r' in display_corr.columns:
+                display_corr['pearson_r'] = display_corr['pearson_r'].map('{:+.3f}'.format)
+            if 'p_value' in display_corr.columns:
+                display_corr['p_value'] = display_corr['p_value'].map('{:.4f}'.format)
+            if 'spearman_rho' in display_corr.columns:
+                display_corr['spearman_rho'] = display_corr['spearman_rho'].map('{:+.3f}'.format)
+            if 'spearman_p' in display_corr.columns:
+                display_corr['spearman_p'] = display_corr['spearman_p'].map('{:.4f}'.format)
+
+            display_corr = display_corr.rename(columns={
+                'feature': 'Socio-Economic Feature',
+                'pearson_r': 'Pearson Correlation (r)',
+                'p_value': 'Pearson p-value',
+                'spearman_rho': 'Spearman Rank (ρ)',
+                'spearman_p': 'Spearman p-value'
+            })
+            st.dataframe(display_corr, use_container_width=True, hide_index=True)
         else:
             st.info("No correlation data available.")
             

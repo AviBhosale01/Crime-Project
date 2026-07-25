@@ -304,9 +304,10 @@ def detect_anomalies_rolling(crimes_df, window_days=14, threshold_z=2.0):
         
     return daily_counts.reset_index(names='date'), df_pivot.reset_index(names='date')
 
+@st.cache_data(show_spinner=False)
 def calculate_socioeconomic_correlations(crimes_df, districts_df):
     """
-    Calculate Pearson correlation between district socio-economic attributes
+    Calculate Pearson (r) and Spearman (rho) rank correlations between district socio-economic attributes
     and total crime count in those districts.
     """
     if crimes_df.empty or districts_df.empty:
@@ -317,17 +318,17 @@ def calculate_socioeconomic_correlations(crimes_df, districts_df):
     
     features = ['unemployment_rate', 'poverty_index', 'median_income', 'education_index', 'population_density']
     
-    correlations = {}
-    p_values = {}
+    rows = []
     for feat in features:
-        r, p = stats.pearsonr(merged[feat], merged['total_crimes'])
-        correlations[feat] = r
-        p_values[feat] = p
+        r_val, r_p = stats.pearsonr(merged[feat], merged['total_crimes'])
+        rho_val, rho_p = stats.spearmanr(merged[feat], merged['total_crimes'])
+        rows.append({
+            'feature': feat,
+            'pearson_r': float(r_val),
+            'p_value': float(r_p),
+            'spearman_rho': float(rho_val),
+            'spearman_p': float(rho_p)
+        })
         
-    df_corr = pd.DataFrame({
-        'feature': features,
-        'pearson_r': [correlations[f] for f in features],
-        'p_value': [p_values[f] for f in features]
-    })
-    
+    df_corr = pd.DataFrame(rows)
     return df_corr.sort_values(by='pearson_r', key=abs, ascending=False)
