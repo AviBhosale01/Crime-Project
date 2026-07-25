@@ -12,6 +12,13 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_readonly_connection():
+    """Return a strict read-only connection to the SQLite database enforcing mode=ro at the database engine level."""
+    abs_path = os.path.abspath(DB_PATH)
+    conn = sqlite3.connect(f"file:{abs_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def init_db(force_recreate=False):
     """Initialize the database and populate it with realistic seed data if empty or forced."""
     db_exists = os.path.exists(DB_PATH)
@@ -148,8 +155,8 @@ def seed_data(conn):
     ]
     
     gangs = [
-        "None", "Pune Local Boys", "Shivaji Nagar Syndicate", "Koregaon Park Cartel",
-        "Hinjawadi Hackers", "D-Company Gang", "Chhota Rajan Gang", "None", "None"
+        "None", "Pune Local Syndicate", "Shivaji Nagar Cartel", "Koregaon Park Network",
+        "Hinjawadi Tech Syndicate", "Deccan Metro Syndicate", "Swargate Crime Ring", "None", "None"
     ]
     
     np.random.seed(42)

@@ -8,20 +8,29 @@ import plotly.graph_objects as go
 import database
 import analytics
 import visualizations
-import importlib
-importlib.reload(database)
-importlib.reload(analytics)
-importlib.reload(visualizations)
 
-# Load security passkeys securely
+# Load security passkeys securely (from config_keys.py or Streamlit Secrets)
+INTEL_ENTRY_KEY = None
+VIEW_DATA_KEY = None
+
 try:
     import config_keys
-    INTEL_ENTRY_KEY = config_keys.INTEL_ENTRY_KEY
-    VIEW_DATA_KEY = config_keys.VIEW_DATA_KEY
+    INTEL_ENTRY_KEY = getattr(config_keys, "INTEL_ENTRY_KEY", None)
+    VIEW_DATA_KEY = getattr(config_keys, "VIEW_DATA_KEY", None)
 except ImportError:
-    import streamlit as st
-    INTEL_ENTRY_KEY = st.secrets.get("INTEL_ENTRY_KEY", "crime_pune_entry_2026")
-    VIEW_DATA_KEY = st.secrets.get("VIEW_DATA_KEY", "crime_pune_view_2026")
+    pass
+
+if not INTEL_ENTRY_KEY:
+    try:
+        INTEL_ENTRY_KEY = st.secrets.get("INTEL_ENTRY_KEY", None)
+    except Exception:
+        INTEL_ENTRY_KEY = None
+
+if not VIEW_DATA_KEY:
+    try:
+        VIEW_DATA_KEY = st.secrets.get("VIEW_DATA_KEY", None)
+    except Exception:
+        VIEW_DATA_KEY = None
 
 # Set Streamlit Page Config
 st.set_page_config(
@@ -249,6 +258,8 @@ if selected_page == "📊 Command Dashboard":
     dash_tab_live, dash_tab_ncrb = st.tabs(["📈 Live Operations (DB)", "🏛️ Pune Police Statistics (NCRB)"])
     
     with dash_tab_live:
+        st.caption("ℹ️ **Operational Simulation Database**: The live metrics below are dynamically populated demo records for Pune crime pattern testing. For official historical figures, switch to the **Pune Police Statistics (NCRB)** tab.")
+        
         # 1. KPI Cards Row
         kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
         
@@ -398,6 +409,7 @@ if selected_page == "📊 Command Dashboard":
                 st.info("No suspect intelligence records available.")
 
     with dash_tab_ncrb:
+        st.success("🏛️ **Official NCRB Benchmark Data**: The statistics below are compiled from official National Crime Records Bureau (NCRB) publications and Pune Police annual crime reports.")
         st.markdown("### 🏛️ Pune City Police — Official Historical Crime Statistics (NCRB)")
         st.write("Browse official data compiled from National Crime Records Bureau (NCRB) publications and Pune Police reviews showing yearly trends and solvability analytics.")
 
@@ -1152,6 +1164,10 @@ elif selected_page == "📝 Intel Entry (CRUD)":
     st.write("Directly interface with the SQLite databases to log crime records, register suspects, and model relationships.")
     
     # Passkey protection
+    if not INTEL_ENTRY_KEY:
+        st.warning("⚠️ Security Policy Warning: Passkey configuration required. Please configure INTEL_ENTRY_KEY in Streamlit Secrets or config_keys.py to unlock access.")
+        st.stop()
+        
     entered_key = st.text_input("Enter Passkey to Access Intel Entry Forms", type="password", key="intel_entry_passkey")
     if entered_key != INTEL_ENTRY_KEY:
         if entered_key:
@@ -1278,6 +1294,10 @@ elif selected_page == "📂 View Data":
     st.write("Explore, search, edit, delete, and download raw tables from the Pune Crime Intelligence database.")
     
     # Passkey protection
+    if not VIEW_DATA_KEY:
+        st.warning("⚠️ Security Policy Warning: Passkey configuration required. Please configure VIEW_DATA_KEY in Streamlit Secrets or config_keys.py to unlock access.")
+        st.stop()
+        
     entered_key = st.text_input("Enter Passkey to Access View Data", type="password", key="view_data_passkey")
     if entered_key != VIEW_DATA_KEY:
         if entered_key:

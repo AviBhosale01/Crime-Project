@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import streamlit as st
 from sklearn.cluster import DBSCAN
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, IsolationForest
 from sklearn.linear_model import Ridge
@@ -22,6 +23,7 @@ def detect_hotspots(df, eps_km=0.5, min_samples=5):
     
     return df.assign(hotspot_id=db.labels_)
 
+@st.cache_data(show_spinner=False)
 def train_severity_predictor(crimes_df):
     """
     Train a Random Forest Classifier to predict the severity of a crime incident.
@@ -129,6 +131,7 @@ def predict_incident_severity(model_dict, input_data):
     class_probs = dict(zip(le.classes_, prob))
     return pred_class, class_probs
 
+@st.cache_data(show_spinner=False)
 def train_recidivism_predictor(suspects_df):
     """
     Train a Random Forest Regressor to predict suspect risk scores.
