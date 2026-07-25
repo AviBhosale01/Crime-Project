@@ -19,6 +19,36 @@ def get_readonly_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def get_dynamic_severity(crime_type, hour, poverty_index=0.15):
+    """
+    Generate realistic severity levels with spatio-temporal and socio-economic variance.
+    Eliminates deterministic data leakage so Random Forest models learn real probabilistic signals.
+    """
+    base_map = {
+        "Theft": {"Low": 0.70, "Medium": 0.25, "High": 0.05},
+        "Burglary": {"Low": 0.15, "Medium": 0.70, "High": 0.15},
+        "Assault": {"Low": 0.10, "Medium": 0.40, "High": 0.50},
+        "Narcotics": {"Low": 0.20, "Medium": 0.50, "High": 0.30},
+        "Fraud": {"Low": 0.60, "Medium": 0.30, "High": 0.10},
+        "Cybercrime": {"Low": 0.30, "Medium": 0.50, "High": 0.20},
+        "Homicide": {"Low": 0.02, "Medium": 0.18, "High": 0.80}
+    }
+    
+    probs = base_map.get(crime_type, {"Low": 0.33, "Medium": 0.33, "High": 0.34}).copy()
+    
+    if hour >= 22 or hour <= 4:
+        probs["High"] += 0.15
+        probs["Low"] = max(0.01, probs["Low"] - 0.15)
+        
+    if poverty_index > 0.20:
+        probs["High"] += 0.10
+        probs["Medium"] = max(0.01, probs["Medium"] - 0.10)
+        
+    total = sum(probs.values())
+    p_values = [probs["Low"] / total, probs["Medium"] / total, probs["High"] / total]
+    
+    return np.random.choice(["Low", "Medium", "High"], p=p_values)
+
 def init_db(force_recreate=False):
     """Initialize the database and populate it with realistic seed data if empty or forced."""
     db_exists = os.path.exists(DB_PATH)
@@ -32,9 +62,13 @@ def init_db(force_recreate=False):
             suspect_count = cursor.fetchone()[0]
             cursor.execute("SELECT COUNT(*) FROM crimes")
             crime_count = cursor.fetchone()[0]
+            
+            # Rebuild if missing dynamic severity variance
+            cursor.execute("SELECT COUNT(*) FROM crimes WHERE severity = 'Low' AND crime_type = 'Homicide'")
+            low_homicides = cursor.fetchone()[0]
             conn.close()
-            # If the database does not have 2000 suspects or exactly 3095 crimes, trigger a rebuild
-            if suspect_count < 2000 or crime_count != 3095:
+            
+            if suspect_count < 2000 or crime_count != 3095 or low_homicides == 0:
                 needs_rebuild = True
         except Exception:
             needs_rebuild = True
@@ -134,9 +168,9 @@ def seed_data(conn):
     """, districts)
     conn.commit()
     
-    # Get district IDs mapped to names
-    cursor.execute("SELECT id, name, center_lat, center_lon FROM districts")
-    district_map = {row['name']: (row['id'], row['center_lat'], row['center_lon']) for row in cursor.fetchall()}
+    # Get district IDs mapped to names and poverty indices
+    cursor.execute("SELECT id, name, center_lat, center_lon, poverty_index FROM districts")
+    district_map = {row['name']: (row['id'], row['center_lat'], row['center_lon'], row['poverty_index']) for row in cursor.fetchall()}
     
     # 2. Seed 2,050 Suspects (Maharashtrian / Indian Names)
     first_names = [
@@ -188,13 +222,13 @@ def seed_data(conn):
     
     # 3. Seed Crimes (Historical for past 540 days)
     crime_types = {
-        "Theft": {"severity": "Low", "weight": 0.28},
-        "Burglary": {"severity": "Medium", "weight": 0.18},
-        "Assault": {"severity": "High", "weight": 0.22},
-        "Narcotics": {"severity": "Medium", "weight": 0.15},
-        "Fraud": {"severity": "Low", "weight": 0.10},
-        "Cybercrime": {"severity": "Medium", "weight": 0.05},
-        "Homicide": {"severity": "High", "weight": 0.02}
+        "Theft": {"weight": 0.28},
+        "Burglary": {"weight": 0.18},
+        "Assault": {"weight": 0.22},
+        "Narcotics": {"weight": 0.15},
+        "Fraud": {"weight": 0.10},
+        "Cybercrime": {"weight": 0.05},
+        "Homicide": {"weight": 0.02}
     }
     
     # Different Pune districts have different crime profiles
@@ -239,7 +273,7 @@ def seed_data(conn):
     }
     
     for dname, target_count in district_targets.items():
-        did, center_lat, center_lon = district_map[dname]
+        did, center_lat, center_lon, d_poverty = district_map[dname]
         
         # Determine allocations
         h_spec = hotspot_specs.get(dname)
@@ -261,7 +295,7 @@ def seed_data(conn):
                 lon = center_lon + np.random.normal(0, h_spec["std"])
                 
                 crime_type = h_spec["type"]
-                severity = crime_types[crime_type]["severity"]
+                severity = get_dynamic_severity(crime_type, hour, d_poverty)
                 status = np.random.choice(statuses, p=[0.45, 0.35, 0.15, 0.05])
                 
                 sus_id = None
@@ -291,7 +325,7 @@ def seed_data(conn):
                 lon = center_lon + np.random.normal(0, a_spec["std"])
                 
                 crime_type = a_spec["type"]
-                severity = crime_types[crime_type]["severity"]
+                severity = get_dynamic_severity(crime_type, hour, d_poverty)
                 status = np.random.choice(["Open", "In Investigation", "Closed"], p=[0.2, 0.4, 0.4])
                 
                 sus_id = None
@@ -323,7 +357,7 @@ def seed_data(conn):
             type_weights = np.array(type_weights) / sum(type_weights)
             crime_type = np.random.choice(allowed_types, p=type_weights)
             
-            severity = crime_types[crime_type]["severity"]
+            severity = get_dynamic_severity(crime_type, hour, d_poverty)
             status = np.random.choice(statuses, p=[0.5, 0.3, 0.15, 0.05])
             
             sus_id = None

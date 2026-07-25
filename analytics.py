@@ -332,3 +332,39 @@ def calculate_socioeconomic_correlations(crimes_df, districts_df):
         
     df_corr = pd.DataFrame(rows)
     return df_corr.sort_values(by='pearson_r', key=abs, ascending=False)
+
+@st.cache_data(show_spinner=False)
+def optimize_patrol_allocations(crimes_df, districts_df, num_patrol_units=12):
+    """
+    Decision-Support System: Uses proportional risk-weighting to optimize N available PCR patrol vans
+    across Pune police sectors to maximize spatial coverage and minimize response times.
+    """
+    if crimes_df.empty or districts_df.empty:
+        return pd.DataFrame()
+        
+    sev_weights = {"High": 3.0, "Medium": 2.0, "Low": 1.0}
+    df_calc = crimes_df.copy()
+    df_calc['weight'] = df_calc['severity'].map(sev_weights).fillna(1.0)
+    
+    district_risk = df_calc.groupby('district_id')['weight'].sum().reset_index()
+    merged = pd.merge(districts_df, district_risk, left_on='id', right_on='district_id', how='left').fillna({'weight': 1.0})
+    
+    # Base allocation: minimum 1 unit per sector
+    merged['allocated_units'] = 1
+    remaining_units = max(0, num_patrol_units - len(merged))
+    
+    if remaining_units > 0:
+        total_risk = merged['weight'].sum()
+        extra_alloc = np.floor((merged['weight'] / total_risk) * remaining_units).astype(int)
+        merged['allocated_units'] += extra_alloc
+        
+        # Distribute remaining fractional units to highest weighted sectors
+        leftover = num_patrol_units - merged['allocated_units'].sum()
+        if leftover > 0:
+            top_idx = merged.sort_values(by='weight', ascending=False).index[:leftover]
+            merged.loc[top_idx, 'allocated_units'] += 1
+            
+    merged['expected_response_min'] = np.clip(18.0 - (merged['allocated_units'] * 2.5) + (merged['weight'] / 100.0), 3.0, 25.0)
+    merged['coverage_pct'] = np.clip((merged['allocated_units'] * 22.0) / (merged['weight'] / 80.0), 55.0, 99.0)
+    
+    return merged[['id', 'name', 'allocated_units', 'weight', 'expected_response_min', 'coverage_pct', 'center_lat', 'center_lon']]

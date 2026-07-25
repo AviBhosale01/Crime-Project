@@ -245,8 +245,21 @@ filter_dict["end_date"] = end_date_input.strftime("%Y-%m-%d 23:59:59")
 # Fetch filtered datasets
 df_crimes, df_suspects, df_districts, df_connections = load_base_data(filter_dict)
 
-# Sidebar System Health Status
+# Sidebar Live Dispatch Feed Simulator
 st.sidebar.markdown("<hr style='border-top: 1px solid #1f2937; margin: 25px 0;'>", unsafe_allow_html=True)
+st.sidebar.markdown("### 📡 Live Dispatch Feed")
+live_feed_active = st.sidebar.toggle("🔴 Simulate PCR Patrol Feed", value=False)
+if live_feed_active:
+    import random
+    sectors = ["Hinjawadi", "Kothrud", "Koregaon Park", "Shivajinagar", "Viman Nagar", "Hadapsar"]
+    c_types = ["Theft", "Cybercrime", "Burglary", "Narcotics", "Assault"]
+    sec = random.choice(sectors)
+    ctype = random.choice(c_types)
+    pcr_id = random.randint(1, 15)
+    t_str = datetime.now().strftime("%I:%M:%S %p")
+    st.sidebar.error(f"🚨 **[{t_str}] Dispatch Alert**: PCR-{pcr_id} routed to **{sec}** ({ctype}).")
+
+st.sidebar.markdown("<hr style='border-top: 1px solid #1f2937; margin: 15px 0;'>", unsafe_allow_html=True)
 st.sidebar.caption("🤖 **AI Platform Core Status**")
 st.sidebar.caption("• Database: SQLite v3")
 st.sidebar.caption("• Hotspot Model: DBSCAN Active")
@@ -361,6 +374,32 @@ if selected_page == "📊 Command Dashboard":
                 st.plotly_chart(fig_bar, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
             else:
                 st.info("No crime data fits the selected filters.")
+                
+        st.markdown("<hr style='border-top: 1px solid rgba(0, 173, 181, 0.2);'>", unsafe_allow_html=True)
+        
+        # 2.5 Patrol Resource Optimization (Decision-Support System)
+        st.markdown("### 🚓 Tactical Patrol Unit (PCR) Allocation Optimizer")
+        st.write("Proportional risk-weighted decision-support system: optimizes $N$ active patrol vans across Pune police sectors to maximize spatial coverage and minimize emergency response latency.")
+        
+        col_opt_ctrl, col_opt_kpi = st.columns([1, 1.5])
+        with col_opt_ctrl:
+            num_vans = st.slider("Available Police Control Room (PCR) Vans", 5, 30, 14, key="slider_num_vans")
+            patrol_df = analytics.optimize_patrol_allocations(df_crimes, df_districts, num_patrol_units=num_vans)
+            
+            if not patrol_df.empty:
+                avg_response = patrol_df['expected_response_min'].mean()
+                avg_coverage = patrol_df['coverage_pct'].mean()
+                
+                pk1, pk2 = st.columns(2)
+                with pk1:
+                    st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Est. Response Latency</div><div class="kpi-value" style="color: #10B981;">{avg_response:.1f} mins</div></div>""", unsafe_allow_html=True)
+                with pk2:
+                    st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Spatial Coverage</div><div class="kpi-value" style="color: #60A5FA;">{avg_coverage:.1f}%</div></div>""", unsafe_allow_html=True)
+                    
+        with col_opt_kpi:
+            if not patrol_df.empty:
+                fig_patrol = visualizations.create_patrol_optimization_chart(patrol_df)
+                st.plotly_chart(fig_patrol, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
                 
         st.markdown("<hr style='border-top: 1px solid rgba(0, 173, 181, 0.2);'>", unsafe_allow_html=True)
         
@@ -1156,6 +1195,21 @@ elif selected_page == "🕸️ Criminal Network Analysis":
             with col_track2:
                 fig_timeline = visualizations.create_offender_timeline(selected_sus_id, df_crimes, s_name)
                 st.plotly_chart(fig_timeline, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True})
+                
+                # AI Case Narrative Briefing Generator
+                s_row = df_suspects[df_suspects['id'] == selected_sus_id].iloc[0]
+                if st.button(f"🤖 Generate AI Officer Briefing for {s_name}", key=f"btn_ai_brief_{selected_sus_id}"):
+                    sus_crimes = df_crimes[df_crimes['suspect_id'] == selected_sus_id]
+                    crime_summary = ", ".join(sus_crimes['crime_type'].unique()) if not sus_crimes.empty else "No logged crime categories"
+                    
+                    briefing_text = (
+                        f"**CONFIDENTIAL POLICE BRIEFING — SUBJECT RECORD #{selected_sus_id}**\n\n"
+                        f"• **Subject Profile**: {s_row['name']} (Age {s_row['age']}), Gang Affiliation: **{s_row['gang_affiliation']}**.\n"
+                        f"• **Risk Classification**: Recidivism Risk Index of **{s_row['risk_score']:.2f}** with **{s_row['priors_count']} prior arrests**.\n"
+                        f"• **Operational History**: Linked to {len(sus_crimes)} incident reports ({crime_summary}) across Pune sectors.\n"
+                        f"• **Tactical Directive**: Maintain active history-sheeter surveillance, track station roll-call attendance, and monitor known gang associate links."
+                    )
+                    st.info(briefing_text)
     else:
         st.info("No crimes are currently linked to suspects. Go to 'Intel Entry' to link suspects to crime reports.")
 

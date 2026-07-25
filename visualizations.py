@@ -894,3 +894,34 @@ def create_cv_score_chart(cv_scores):
     )
     return fig
 
+def create_patrol_optimization_chart(patrol_df):
+    """
+    Render a horizontal bar chart showing allocated PCR patrol vans per sector.
+    """
+    if patrol_df.empty:
+        return go.Figure()
+        
+    df_sorted = patrol_df.sort_values(by='allocated_units', ascending=True)
+    
+    fig = px.bar(
+        df_sorted,
+        x='allocated_units',
+        y='name',
+        orientation='h',
+        color='allocated_units',
+        color_continuous_scale='Viridis',
+        text='allocated_units',
+        labels={'allocated_units': 'Allocated Patrol Vans', 'name': 'Police Sector'},
+        title="<b>Optimal Patrol Van (PCR) Allocation per Sector</b>"
+    )
+    
+    fig.update_traces(texttemplate=' 🚓 %{x} Vans', textposition='outside')
+    fig.update_layout(
+        height=320,
+        margin=dict(l=20, r=40, t=40, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        coloraxis_showscale=False
+    )
+    return fig
+
