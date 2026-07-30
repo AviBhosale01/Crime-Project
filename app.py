@@ -67,10 +67,66 @@ st.markdown("""
         font-family: 'Outfit', 'Inter', sans-serif;
     }
     
-    /* Sidebar styling */
+    /* Sidebar Glassmorphic Styling */
     section[data-testid="stSidebar"] {
-        background-color: #111827;
-        border-right: 1px solid #1f2937;
+        background: linear-gradient(180deg, #0f172a 0%, #111827 100%) !important;
+        border-right: 1px solid rgba(59, 130, 246, 0.2) !important;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Animated Sidebar Navigation Menu Options */
+    section[data-testid="stSidebar"] div[role="radiogroup"] {
+        gap: 6px;
+        padding: 4px 0;
+    }
+    
+    section[data-testid="stSidebar"] div[role="radiogroup"] label {
+        background: rgba(30, 41, 59, 0.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 10px !important;
+        padding: 10px 14px !important;
+        margin-bottom: 5px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Sidebar Navigation Hover Micro-Animation */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+        background: rgba(59, 130, 246, 0.15) !important;
+        border-color: rgba(59, 130, 246, 0.4) !important;
+        transform: translateX(6px) scale(1.02) !important;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.25) !important;
+    }
+    
+    /* Active Clicked / Selected Menu Item Glowing Highlight State */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"],
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+        background: linear-gradient(90deg, rgba(37, 99, 235, 0.35) 0%, rgba(29, 78, 216, 0.15) 100%) !important;
+        border-left: 4px solid #3b82f6 !important;
+        border-top: 1px solid rgba(59, 130, 246, 0.5) !important;
+        border-right: 1px solid rgba(59, 130, 246, 0.5) !important;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.5) !important;
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.35), inset 0 0 10px rgba(59, 130, 246, 0.1) !important;
+        transform: translateX(4px) !important;
+    }
+    
+    section[data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"] p,
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        text-shadow: 0 0 10px rgba(96, 165, 250, 0.6);
+    }
+
+    /* Pulse Glow Keyframe for Selected Indicator */
+    @keyframes pulseSidebarGlow {
+        0% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+        50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); }
+        100% { box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+    }
+    
+    section[data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"] {
+        animation: pulseSidebarGlow 3s infinite ease-in-out;
     }
     
     /* Main titles and headers */
