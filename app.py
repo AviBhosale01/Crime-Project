@@ -2280,6 +2280,13 @@ elif selected_page == "📰 Crime News":
         st.markdown("### 🤖 Live AI Crime News Intelligence Analyst")
         st.write("Ask any question about today's crime headlines or real-time news reports. The AI cross-references the live fetched NewsAPI articles and provides an executive intelligence briefing.")
         
+        api_key = st.session_state.get("llm_api_key", "")
+        provider = st.session_state.get("llm_provider", "Gemini")
+        model_name = st.session_state.get("llm_model", "gemini-1.5-flash")
+        
+        if not api_key:
+            st.info("💡 **LLM API Key Required**: Please configure and save your API Key in the **💬 AI Intel Chatbot** tab above to interact with the AI News Analyst.")
+            
         if "news_messages" not in st.session_state:
             st.session_state.news_messages = []
             
@@ -2308,22 +2315,25 @@ elif selected_page == "📰 Crime News":
         news_prompt = clicked_news_q if clicked_news_q else news_user_input
         
         if news_prompt:
-            with st.chat_message("user"):
-                st.markdown(news_prompt)
-            st.session_state.news_messages.append({"role": "user", "content": news_prompt})
-            
-            with st.chat_message("assistant"):
-                with st.spinner("🤖 Analyzing real-time NewsAPI articles and writing OSINT briefing..."):
-                    # Construct article context
-                    art_snippets = []
-                    for idx, a in enumerate(articles[:12]):
-                        art_snippets.append(f"[{idx+1}] Source: {a.get('source',{}).get('name')}\nTitle: {a.get('title')}\nDate: {a.get('publishedAt', '')[:10]}\nSnippet: {a.get('description')}\nURL: {a.get('url')}")
-                    context_str = "\n\n".join(art_snippets) if art_snippets else "No live articles currently fetched."
-                    
-                    now_dt = datetime.now()
-                    live_dt_str = now_dt.strftime("%A, %d %B %Y, %I:%M:%S %p IST")
-                    
-                    news_system_prompt = f"""You are the OSINT Crime News Intelligence Analyst for Pune Police Command Center.
+            if not api_key:
+                st.warning("Please save your API Key in the '💬 AI Intel Chatbot' tab first.")
+            else:
+                with st.chat_message("user"):
+                    st.markdown(news_prompt)
+                st.session_state.news_messages.append({"role": "user", "content": news_prompt})
+                
+                with st.chat_message("assistant"):
+                    with st.spinner("🤖 Analyzing real-time NewsAPI articles and writing OSINT briefing..."):
+                        # Construct article context
+                        art_snippets = []
+                        for idx, a in enumerate(articles[:12]):
+                            art_snippets.append(f"[{idx+1}] Source: {a.get('source',{}).get('name')}\nTitle: {a.get('title')}\nDate: {a.get('publishedAt', '')[:10]}\nSnippet: {a.get('description')}\nURL: {a.get('url')}")
+                        context_str = "\n\n".join(art_snippets) if art_snippets else "No live articles currently fetched."
+                        
+                        now_dt = datetime.now()
+                        live_dt_str = now_dt.strftime("%A, %d %B %Y, %I:%M:%S %p IST")
+                        
+                        news_system_prompt = f"""You are the OSINT Crime News Intelligence Analyst for Pune Police Command Center.
 CURRENT REAL-TIME SYSTEM DATETIME: {live_dt_str}.
 
 You have access to real-time live news articles fetched via NewsAPI for query '{query_to_run}'.
@@ -2337,42 +2347,43 @@ INSTRUCTIONS:
 3. If the user asks for "today's crime" or "latest news", summarize the top articles from the context above. State clearly that this information is live open-source news (OSINT).
 4. Maintain an authoritative, factual police intelligence briefing tone.
 """
-                    ai_answer = ""
-                    try:
-                        if provider == "Gemini":
-                            import google.generativeai as genai
-                            genai.configure(api_key=api_key)
-                            m_news = genai.GenerativeModel(model_name, system_instruction=news_system_prompt)
-                            ai_answer = m_news.generate_content(news_prompt).text
-                        else:
-                            from openai import OpenAI
-                            base_urls = {
-                                "OpenAI": None,
-                                "OpenRouter": "https://openrouter.ai/api/v1",
-                                "Groq": "https://api.groq.com/openai/v1",
-                                "NVIDIA NIM": "https://integrate.api.nvidia.com/v1"
-                            }
-                            client = OpenAI(api_key=api_key, base_url=base_urls.get(provider))
-                            extra_headers = {}
-                            if provider == "OpenRouter":
-                                extra_headers = {
-                                    "HTTP-Referer": "https://github.com/google-deepmind/antigravity",
-                                    "X-Title": "Antigravity Crime Command Center"
+                        ai_answer = ""
+                        try:
+                            if provider == "Gemini":
+                                import google.generativeai as genai
+                                genai.configure(api_key=api_key)
+                                m_news = genai.GenerativeModel(model_name, system_instruction=news_system_prompt)
+                                ai_answer = m_news.generate_content(news_prompt).text
+                            else:
+                                from openai import OpenAI
+                                base_urls = {
+                                    "OpenAI": None,
+                                    "OpenRouter": "https://openrouter.ai/api/v1",
+                                    "Groq": "https://api.groq.com/openai/v1",
+                                    "NVIDIA NIM": "https://integrate.api.nvidia.com/v1"
                                 }
-                            resp = client.chat.completions.create(
-                                model=model_name,
-                                messages=[
-                                    {"role": "system", "content": news_system_prompt},
-                                    {"role": "user", "content": news_prompt}
-                                ],
-                                extra_headers=extra_headers
-                            )
-                            ai_answer = resp.choices[0].message.content
-                    except Exception as ex_news:
-                        ai_answer = f"⚠️ Could not generate AI News Briefing: {ex_news}\n\nPlease verify your LLM API Key settings in the AI Intel Chatbot configuration panel."
-                        
-                    st.markdown(ai_answer)
-                    st.session_state.news_messages.append({"role": "assistant", "content": ai_answer})
+                                client = OpenAI(api_key=api_key, base_url=base_urls.get(provider))
+                                extra_headers = {}
+                                if provider == "OpenRouter":
+                                    extra_headers = {
+                                        "HTTP-Referer": "https://github.com/google-deepmind/antigravity",
+                                        "X-Title": "Antigravity Crime Command Center"
+                                    }
+                                resp = client.chat.completions.create(
+                                    model=model_name,
+                                    messages=[
+                                        {"role": "system", "content": news_system_prompt},
+                                        {"role": "user", "content": news_prompt}
+                                    ],
+                                    extra_headers=extra_headers
+                                )
+                                ai_answer = resp.choices[0].message.content
+                        except Exception as ex_news:
+                            ai_answer = f"⚠️ Could not generate AI News Briefing: {ex_news}\n\nPlease verify your LLM API Key settings in the AI Intel Chatbot configuration panel."
+                            
+                        st.markdown(ai_answer)
+                        st.session_state.news_messages.append({"role": "assistant", "content": ai_answer})
+                        st.rerun()
                     st.rerun()
 
 # --- Global Page End Footer ---
