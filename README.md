@@ -68,50 +68,111 @@ Access to admin forms and raw database tables is protected via security passkey 
 
 ---
 
-## 📋 Relational Database Schema
+## 📋 Relational Database Architecture & Schema Specification
+
+### 🌳 Structural Relationship Tree
+```
+crime_analytics.db
+├── 🏙️ districts (Socio-Economic Sector Baselines)
+│   └── 🔗 1:N ──► ⚠️ crimes (Historical Incident Logs)
+└── 👤 suspects (Criminal Registry & Risk Profiles)
+    ├── 🔗 1:N ──► ⚠️ crimes (Linked Incident Offenses)
+    └── 🔗 M:N ──► 🕸️ suspect_connections (Social Link Analysis)
+```
+
+### 🔀 Entity-Relationship Diagram (ERD)
 
 ```mermaid
 erDiagram
-    DISTRICTS ||--o{ CRIMES : "occurs in"
-    SUSPECTS ||--o{ CRIMES : "committed by"
-    SUSPECTS ||--o{ SUSPECT_CONNECTIONS : "associated with"
+    DISTRICTS ||--o{ CRIMES : "contains (1:N)"
+    SUSPECTS ||--o{ CRIMES : "committed by (1:N)"
+    SUSPECTS ||--o{ SUSPECT_CONNECTIONS : "originates link (1:N)"
+    SUSPECTS ||--o{ SUSPECT_CONNECTIONS : "receives link (1:N)"
 
     DISTRICTS {
-        int id PK
-        string name
-        float unemployment_rate
-        float poverty_index
-        float median_income
-        float population_density
+        INTEGER id PK "Auto Increment"
+        TEXT name UK "Pune Sector Name"
+        REAL unemployment_rate "Unemployment %"
+        REAL poverty_index "Poverty Index (0-1)"
+        REAL median_income "Annual Median Income (₹)"
+        REAL education_index "Education Index (0-1)"
+        REAL population_density "Per Sq Km Density"
+        REAL center_lat "Latitude Coordinate"
+        REAL center_lon "Longitude Coordinate"
     }
 
     SUSPECTS {
-        int id PK
-        string name
-        int age
-        string gang_affiliation
-        int priors_count
-        float risk_score
+        INTEGER id PK "Auto Increment"
+        TEXT name "Full Offender Name"
+        INTEGER age "Current Age"
+        TEXT gang_affiliation "Syndicate / Network Name"
+        INTEGER priors_count "Prior Arrest Record Count"
+        REAL risk_score "Recidivism Risk Index (0-1)"
     }
 
     CRIMES {
-        int id PK
-        string timestamp
-        int district_id FK
-        string crime_type
-        string severity
-        float latitude
-        float longitude
-        int suspect_id FK
+        INTEGER id PK "Auto Increment"
+        TEXT timestamp "YYYY-MM-DD HH:MM:SS"
+        INTEGER district_id FK "References districts.id"
+        TEXT crime_type "Category (Theft, Homicide, etc.)"
+        TEXT severity "Low / Medium / High"
+        REAL latitude "GIS Latitude Coordinate"
+        REAL longitude "GIS Longitude Coordinate"
+        TEXT status "Open / In Investigation / Closed"
+        INTEGER suspect_id FK "References suspects.id"
     }
 
     SUSPECT_CONNECTIONS {
-        int suspect_a FK
-        int suspect_b FK
-        string relation_type
-        int strength
+        INTEGER suspect_a PK,FK "References suspects.id"
+        INTEGER suspect_b PK,FK "References suspects.id"
+        TEXT relation_type "Gang Member / Accomplice / Relative"
+        INTEGER strength "Link Weight Intensity (1-5)"
     }
 ```
+
+### 📊 Comprehensive Database Table Specifications
+
+#### 1. `districts` Table (Pune Sector Demographics)
+| Column Name | Data Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `INTEGER` | `PRIMARY KEY AUTOINCREMENT` | Sector unique identifier |
+| `name` | `TEXT` | `UNIQUE NOT NULL` | Sector name (e.g. Hinjawadi, Kothrud, Koregaon Park) |
+| `unemployment_rate` | `REAL` | `NOT NULL` | Local unemployment rate percentage |
+| `poverty_index` | `REAL` | `NOT NULL` | Normalized poverty index score ($0.0 - 1.0$) |
+| `median_income` | `REAL` | `NOT NULL` | Annual household median income in INR (₹) |
+| `education_index` | `REAL` | `NOT NULL` | Literacy and education index score ($0.0 - 1.0$) |
+| `population_density` | `REAL` | `NOT NULL` | Population per square kilometer |
+| `center_lat` / `center_lon` | `REAL` | `NOT NULL` | Geographic centroid coordinates for GIS mapping |
+
+#### 2. `suspects` Table (Criminal Registry & Risk Profiles)
+| Column Name | Data Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `INTEGER` | `PRIMARY KEY AUTOINCREMENT` | Suspect unique registration ID |
+| `name` | `TEXT` | `NOT NULL` | Full legal name of suspect |
+| `age` | `INTEGER` | `NOT NULL` | Offender age |
+| `gang_affiliation` | `TEXT` | `NOT NULL` | Fictional crime syndicate affiliation |
+| `priors_count` | `INTEGER` | `NOT NULL` | Number of verified prior arrest records |
+| `risk_score` | `REAL` | `NOT NULL` | Calculated Recidivism Risk Index ($0.10 - 0.95$) |
+
+#### 3. `crimes` Table (Incident Logs)
+| Column Name | Data Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `INTEGER` | `PRIMARY KEY AUTOINCREMENT` | Incident log unique identifier |
+| `timestamp` | `TEXT` | `NOT NULL` | ISO timestamp of offense occurrence |
+| `district_id` | `INTEGER` | `FOREIGN KEY (districts.id)` | Sector location foreign key link |
+| `crime_type` | `TEXT` | `NOT NULL` | Category (Theft, Burglary, Homicide, Narcotics, etc.) |
+| `severity` | `TEXT` | `NOT NULL` | Probabilistic severity rating (Low, Medium, High) |
+| `latitude` / `longitude` | `REAL` | `NOT NULL` | Exact GPS incident coordinates |
+| `status` | `TEXT` | `NOT NULL` | Case status (Open, In Investigation, Closed) |
+| `suspect_id` | `INTEGER` | `FOREIGN KEY (suspects.id)` | Optional linked primary suspect ID |
+
+#### 4. `suspect_connections` Table (Network Link Analysis)
+| Column Name | Data Type | Constraint | Description |
+| :--- | :--- | :--- | :--- |
+| `suspect_a` | `INTEGER` | `PRIMARY KEY, FOREIGN KEY` | Originating suspect ID |
+| `suspect_b` | `INTEGER` | `PRIMARY KEY, FOREIGN KEY` | Associated suspect ID |
+| `relation_type` | `TEXT` | `NOT NULL` | Relationship classification (Gang Member, Accomplice, Relative) |
+| `strength` | `INTEGER` | `NOT NULL` | Connection weight intensity ($1 - 5$) |
 
 ---
 
