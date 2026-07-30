@@ -1,138 +1,147 @@
 # 🛡️ Pune Crime Intelligence Command Center (PCICC)
 
-An advanced, premium-tier AI-powered Geospatial Analytics, Suspect Risk Profiling, and Criminal Social Network Linkage platform built specifically for **Pune, Maharashtra, India**. 
+<div align="center">
 
-Equipped with a **Universal Text-to-SQL AI Chatbot**, the platform allows investigators to ask natural language questions, automatically queries the SQLite database, and presents smart analytics using models from Gemini, OpenAI, OpenRouter, Groq, and NVIDIA NIM.
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=Streamlit&logoColor=white)
+![Scikit-Learn](https://img.shields.io/badge/scikit_learn-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=flat-square&logo=plotly&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=flat-square&logo=google-gemini&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white)
+![NewsAPI](https://img.shields.io/badge/NewsAPI-000000?style=flat-square&logo=newspaper&logoColor=white)
+
+An enterprise-grade, AI-powered Geospatial Analytics, Suspect Risk Profiling, Decision-Support System, and Criminal Social Network Linkage platform built specifically for **Pune, Maharashtra, India**.
+
+[Live Demo Application](https://avibhosale01-crime-project-app-cgmphi.streamlit.app) • [Report Bug](https://github.com/AviBhosale01/Crime-Project/issues) • [Request Feature](https://github.com/AviBhosale01/Crime-Project/issues)
+
+</div>
 
 ---
 
-## 🌟 Key Features
+## ⚡ Tech Stack & Technologies
+
+<div align="center">
+
+| Category | Tech Stack Badges |
+| :--- | :--- |
+| **Core & UI** | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat-square&logo=streamlit&logoColor=white) |
+| **Machine Learning & AI** | ![Scikit-Learn](https://img.shields.io/badge/scikit_learn-F7931E?style=flat-square&logo=scikit-learn&logoColor=white) ![Google Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=google-gemini&logoColor=white) ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white) ![NetworkX](https://img.shields.io/badge/NetworkX-000000?style=flat-square&logo=python&logoColor=white) |
+| **Geospatial & Data** | ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=flat-square&logo=plotly&logoColor=white) ![Pandas](https://img.shields.io/badge/Pandas-150458?style=flat-square&logo=pandas&logoColor=white) ![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat-square&logo=numpy&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white) ![NewsAPI](https://img.shields.io/badge/NewsAPI-000000?style=flat-square&logo=newspaper&logoColor=white) |
+| **Reporting & Exports** | ![ReportLab](https://img.shields.io/badge/PDF_Export-ReportLab-red?style=flat-square) ![OpenPyXL](https://img.shields.io/badge/Excel_Export-OpenPyXL-green?style=flat-square) ![PNG](https://img.shields.io/badge/Image_Export-Matplotlib-blue?style=flat-square) |
+
+</div>
+
+---
+
+## 🌟 Key Platform Features
 
 *   **📊 Command Dashboard**: Real-time KPI indicators showcasing active crime metrics, DBSCAN-generated hotspots, high-risk recidivists, and daily anomaly spikes (Z-score analysis).
+*   **🚓 Tactical Patrol Unit (PCR) Allocation Optimizer**: Proportional risk-weighted decision-support system that optimizes $N$ active patrol vans across Pune sectors to maximize coverage and minimize response times.
 *   **🗺️ Geospatial Intelligence Map**: Plotly Mapbox maps centered on Pune showing crime distribution. Includes DBSCAN clustering layers and centroid markers displaying hotspot names and crime counts.
 *   **🔍 Intelligence Explorer & Search**: Search directory supporting text-filtering over **2,050 suspects** and **3,000+ crime logs**. Features a detailed **Suspect Dossier Inspector** linking biographical indicators and incident timelines.
 *   **🧠 AI Predictive Models**:
-    *   *Incident Severity Predictor*: Random Forest Classifier predicting Low/Medium/High incident severity based on socio-economic and temporal factors.
-    *   *Recidivism Risk Forecaster*: Random Forest Regressor predicting a repeat offender's risk index.
-    *   *Socio-Economic Correlation*: Interactive Pearson correlation metrics tracking crime density vs. local poverty and unemployment.
-*   **🕸️ Criminal Network Analysis**: Interactive social link analysis of cliques and associates. Employs NetworkX centrality scores to identify associate hubs (degree centrality) and bridge figures (betweenness centrality).
-*   **📝 CRUD Intel Entry (Passkey Locked)**: Clean form validation interfaces to log crime incidents, register new suspects, and model criminal connections. Access is restricted using a secure password validation gate.
-*   **📂 View Data Explorer & Editor (Passkey Locked)**:
-    *   *Direct Database Management*: A full-featured editor page to view, search, add, edit, and delete suspects, crime logs, and associations.
-    *   *SQLite Synchronization*: Persist inline edits directly to SQLite. Cascading deletions automatically unlink suspect IDs from crimes and clear network connections.
-    *   *Built-in Undo/Redo & Reset*: Reset edits easily or use standard `Ctrl+Z` / `Ctrl+Y` shortcuts to revert table edits.
-*   **💬 AI Intelligence Chatbot**: A secure conversational interface supporting **Gemini, OpenAI, OpenRouter, Groq, and NVIDIA NIM**. Auto-translates English questions into SQLite code, queries the database, and summarizes results contextually.
+    *   *Incident Severity Predictor*: Random Forest Classifier evaluating spatio-temporal and socio-economic variables with out-of-sample confusion matrices and 5-fold cross-validation.
+    *   *Recidivism Risk Forecaster*: Random Forest Regressor predicting repeat offender risk scores with $R^2$, MAE, and RMSE evaluation metrics.
+    *   *Socio-Economic Correlation*: Interactive Pearson ($r$) and Spearman ($\rho$) correlation matrices tracking crime density vs. poverty and unemployment.
+    *   *Dual Anomaly Detector*: Combines 14-day rolling statistical Z-score thresholding with Isolation Forest ML anomaly detection.
+*   **🕸️ Criminal Network Link Analysis**: Interactive social network visualization of suspect cliques. Employs NetworkX centrality scores to identify gang hubs (degree centrality) and bridge figures (betweenness centrality).
+*   **🤖 AI Officer Briefing Generator**: Auto-generates formal natural language police intelligence briefings for tracked suspects and cases.
+*   **📰 Live OSINT Crime News & AI News Analyst**: Fetches live real-time crime news via **NewsAPI**, supporting custom topic searches, quick filter chips, and an interactive AI News Analyst Chatbot.
+*   **💬 Universal Text-to-SQL Chatbot**: Conversational interface supporting **Gemini, OpenAI, OpenRouter, Groq, and NVIDIA NIM**. Auto-translates questions into read-only SQLite code, queries the database, and summarizes results contextually.
+*   **📝 CRUD Intel Entry (Passkey Locked)**: Form validation interfaces to log crime incidents, register new suspects, and model criminal connections.
+*   **📂 View Data Explorer & Editor (Passkey Locked)**: Direct database editor supporting multi-format downloads (Excel `.xlsx`, PDF, CSV, PNG images).
 
 ---
 
-## 🔒 Security & Access Control
+## 🔒 Security & Engine-Level Guardrails
 
-Access to data entry and raw database tables is restricted using secure password gates. These keys can be configured via Streamlit secrets (`.streamlit/secrets.toml`), environment variables, or an uncommitted local `config_keys.py` file:
+> [!IMPORTANT]
+> **Read-Only SQLite Engine Security**: The AI Chatbot executes queries using a strict read-only URI connection (`file:{path}?mode=ro`, `uri=True`). Any modification attempts (`DROP`, `DELETE`, `UPDATE`) are rejected directly at the SQLite engine level.
+
+Access to admin forms and raw database tables is protected via security passkey gates:
 
 | Page / Action | Environment / Secret Key | Configuration Method |
 | :--- | :--- | :--- |
 | **📝 Intel Entry (CRUD)** | `INTEL_ENTRY_KEY` | Set in `.streamlit/secrets.toml` or `config_keys.py` |
 | **📂 View Data (Explorer)** | `VIEW_DATA_KEY` | Set in `.streamlit/secrets.toml` or `config_keys.py` |
 
-*To set up passkeys for local development, copy `config_keys.py.example` to `config_keys.py` and specify your custom passkey strings. `config_keys.py` is included in `.gitignore` to prevent committing sensitive keys to public repositories.*
-
 ---
 
-## 🛠️ Technology Stack
+## 📋 Relational Database Schema
 
-*   **Frontend UI & Dashboard**: Streamlit (Premium Custom Dark Matter styling)
-*   **Data Wrangling**: Pandas, NumPy
-*   **Visualizations & Maps**: Plotly Express/GO, Folium, Mapbox, Matplotlib
-*   **Machine Learning**: Scikit-Learn (Random Forests, Isolation Forest, DBSCAN)
-*   **Network Graphs**: NetworkX
-*   **Database Management**: SQLite3
-*   **Exports**: `openpyxl` (Excel), `reportlab` (PDF)
-*   **AI Chatbot Engine**: Gemini, OpenAI, OpenRouter, Groq, NVIDIA NIM (NVIDIA NeMo Cloud)
+```mermaid
+erDiagram
+    DISTRICTS ||--o{ CRIMES : "occurs in"
+    SUSPECTS ||--o{ CRIMES : "committed by"
+    SUSPECTS ||--o{ SUSPECT_CONNECTIONS : "associated with"
 
----
+    DISTRICTS {
+        int id PK
+        string name
+        float unemployment_rate
+        float poverty_index
+        float median_income
+        float population_density
+    }
 
-## 📋 Database Schema
+    SUSPECTS {
+        int id PK
+        string name
+        int age
+        string gang_affiliation
+        int priors_count
+        float risk_score
+    }
 
-The SQLite database (`crime_analytics.db`) is structured as follows:
+    CRIMES {
+        int id PK
+        string timestamp
+        int district_id FK
+        string crime_type
+        string severity
+        float latitude
+        float longitude
+        int suspect_id FK
+    }
 
+    SUSPECT_CONNECTIONS {
+        int suspect_a FK
+        int suspect_b FK
+        string relation_type
+        int strength
+    }
 ```
- districts ──────────┐
- (Socio-economics)   │ (1-to-many)
-                     ▼
-                  crimes ◄────────── suspects
-                 (Incidents)        (2,000+ Profiles)
-                                           │ (many-to-many via self-join)
-                                           ▼
-                                   suspect_connections
-                                   (Clique link maps)
-```
-
-*   **`districts`**: Uniquely models Pune regions (Shivajinagar, Kothrud, Hinjawadi, Koregaon Park, Hadapsar, Katraj, Swargate, Viman Nagar) with local coordinates, unemployment rates, poverty index, median incomes, and population density.
-*   **`suspects`**: Tracks 2,050 unique Maharashtrian suspect profiles with gang affiliations, priors, and calculated risk index.
-*   **`crimes`**: Contains historical logs of 3,095 incidents including timestamps, severity classifications, and coordinates.
-*   **`suspect_connections`**: Defines relationship links (Accomplice, Co-arrestee, Gang Member, Relative) and link strengths.
 
 ---
 
-## 🚀 Installation & Setup Guide
+## 🚀 Quickstart Installation Guide
 
-Get the Pune Crime Intelligence Command Center running on your local machine in three simple steps:
-
-### Step 1: Clone or Copy the Repository
-Make sure all project files are placed in your working directory:
+### Step 1: Clone the Repository
 ```bash
-📂 project-directory/
-├── 📄 app.py                  # Streamlit dashboard layout & pages
-├── 📄 database.py             # SQLite connection, seeding, & CRUD functions
-├── 📄 config_keys.py.example  # Security passkey template (copy to uncommitted config_keys.py)
-├── 📄 analytics.py            # ML predictors & anomaly detection
-├── 📄 visualizations.py       # Plotly charts, Mapbox maps, & NetworkX
-├── 📄 requirements.txt        # Library dependencies
-└── 📄 README.md               # Documentation
+git clone https://github.com/AviBhosale01/Crime-Project.git
+cd Crime-Project
 ```
 
 ### Step 2: Install Dependencies
-Open your terminal inside the project directory and run:
 ```bash
 pip install -r requirements.txt openpyxl reportlab
 ```
-*Note: This installs essential packages including `streamlit`, `scikit-learn`, `networkx`, `plotly`, `google-generativeai`, `openai`, `openpyxl`, and `reportlab`.*
 
-### Step 3: Run the Application
-Start the Streamlit development server:
+### Step 3: Run Application Locally
 ```bash
 streamlit run app.py
 ```
-The server will boot up and print local URLs. The application will open automatically in your browser at `http://localhost:8501`.
+The application will launch automatically in your browser at `http://localhost:8501`.
 
 ---
 
-## 📥 Exporting & Downloading Data
+## 👨‍💻 Author & Attribution
 
-Under the **📂 View Data** tab, investigators can search for any record and export tables using the following buttons:
-1.  **CSV Export**: Native comma-separated values download.
-2.  **Excel Export**: Fully formatted `.xlsx` workbook sheet.
-3.  **PDF Export**: A clean, landscape-oriented document report compiled using `reportlab`.
-4.  **Table Image (PNG)**: Renders a high-resolution alternating-row preview table image using `matplotlib`.
+<div align="center">
 
----
+Developed with ❤️ by **Avii**
 
-## 💬 Using the AI Chatbot
+[![GitHub Profile](https://img.shields.io/badge/GitHub-AviBhosale01-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/AviBhosale01)
 
-1.  Navigate to the **💬 AI Intel Chatbot** page in the left sidebar.
-2.  Choose your API provider (**Gemini, OpenAI, OpenRouter, Groq, or NVIDIA NIM**).
-3.  Select a preset version or select **Custom Model** to type any specific model ID.
-4.  Enter your API Key in the secure password input field and click **Save API Credentials**.
-5.  Type a question about Pune crime analytics in the chat box. E.g.:
-    *   *"How many crimes occurred in Hinjawadi in total?"*
-    *   *"Who are the top 5 highest risk suspects in the Koregaon Park Cartel?"*
-    *   *"List all incidents with High severity in Kothrud."*
-6.  The chatbot will translate your question into a SQLite query, execute it, display the query logs (collapsible expander), and explain the response.
-
----
-
-## 🛡️ License & Credit
-
-This project is developed for Datathon analytics and law enforcement modeling purposes. All generated suspect records are synthetic and randomized for demonstration.
-
-**Made by Shreya**
+</div>
