@@ -828,34 +828,19 @@ elif selected_page == "🧠 AI Predictive Models":
     
     # Tab 1: Incident Severity Classification
     with tab_predict:
-        st.markdown("### Multi-Model Incident Severity Predictor & Leaderboard")
-        st.write("Evaluates and benchmarks **Random Forest, XGBoost, LightGBM, and Soft Voting Ensembles** on spatio-temporal and socio-economic crime indicators.")
+        st.markdown("### Predict Potential Crime Severity")
+        st.write("Random Forest Classifier trained on historical crime logs using spatio-temporal features, district socio-economics, and category indicators with 80/20 train/test evaluation and 5-fold cross-validation.")
         
-        sel_sev_model_type = st.selectbox(
-            "⚙️ Select Active Classification Algorithm / Ensemble",
-            ["🏆 Multi-Model Soft Voting Ensemble", "⚡ XGBoost Classifier", "🍃 LightGBM Classifier", "🌲 Random Forest"],
-            key="sel_sev_model_type"
-        )
-        
-        # Train multi-model suite
-        model_dict, train_msg = analytics.train_severity_predictor(df_crimes, selected_model_name=sel_sev_model_type)
+        # Train model
+        model_dict, train_msg = analytics.train_severity_predictor(df_crimes)
         
         if model_dict:
-            with st.expander("🏆 Multi-Model Benchmark Leaderboard & Comparison", expanded=False):
-                col_ld1, col_ld2 = st.columns([1.2, 1])
-                with col_ld1:
-                    st.markdown("##### 📊 Out-of-Sample Leaderboard Matrix")
-                    st.dataframe(model_dict['leaderboard_df'], use_container_width=True, hide_index=True)
-                with col_ld2:
-                    fig_ld_chart = visualizations.create_model_leaderboard_chart(model_dict['leaderboard_df'], metric_col="Macro F1-Score", title="Macro F1-Score Comparison")
-                    st.plotly_chart(fig_ld_chart, use_container_width=True, config={'displayModeBar': False})
-
             # Model Validation Performance Metrics Banner
             m1, m2, m3, m4 = st.columns(4)
             with m1:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Active Out-of-Sample Acc</div><div class="kpi-value" style="color: #34d399;">{model_dict['accuracy']*100:.1f}%</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Out-of-Sample Accuracy</div><div class="kpi-value" style="color: #34d399;">{model_dict['accuracy']*100:.1f}%</div></div>""", unsafe_allow_html=True)
             with m2:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Active Weighted F1</div><div class="kpi-value" style="color: #60a5fa;">{model_dict['f1_score']:.3f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Weighted F1-Score</div><div class="kpi-value" style="color: #60a5fa;">{model_dict['f1_score']:.3f}</div></div>""", unsafe_allow_html=True)
             with m3:
                 st.markdown(f"""<div class="kpi-card"><div class="kpi-title">5-Fold CV Accuracy</div><div class="kpi-value" style="color: #fbbf24;">{model_dict['cv_mean']*100:.1f}% ± {model_dict['cv_std']*100:.1f}%</div></div>""", unsafe_allow_html=True)
             with m4:
@@ -948,31 +933,16 @@ elif selected_page == "🧠 AI Predictive Models":
             
     # Tab 2: Suspect Recidivism Prediction
     with tab_suspect:
-        st.markdown("### Multi-Model Suspect Recidivism Risk Forecaster")
-        st.write("Evaluates **Random Forest, XGBoost, LightGBM, and Weighted Voting Ensembles** to compute offender Recidivism Risk Index.")
+        st.markdown("### Suspect Recidivism Risk Forecaster")
+        st.write("Random Forest Regressor evaluating suspect demographic & arrest history to compute a **Recidivism Risk Index**.")
         
-        sel_rec_model_type = st.selectbox(
-            "⚙️ Select Active Regression Algorithm / Ensemble",
-            ["🏆 Multi-Model Weighted Ensemble", "⚡ XGBoost Regressor", "🍃 LightGBM Regressor", "🌲 Random Forest"],
-            key="sel_rec_model_type"
-        )
-        
-        sus_model_dict, sus_msg = analytics.train_recidivism_predictor(df_suspects, selected_model_name=sel_rec_model_type)
+        sus_model_dict, sus_msg = analytics.train_recidivism_predictor(df_suspects)
         
         if sus_model_dict:
-            with st.expander("🏆 Multi-Model Regression Leaderboard & Comparison", expanded=False):
-                col_rld1, col_rld2 = st.columns([1.2, 1])
-                with col_rld1:
-                    st.markdown("##### 📊 Out-of-Sample Regression Leaderboard")
-                    st.dataframe(sus_model_dict['leaderboard_df'], use_container_width=True, hide_index=True)
-                with col_rld2:
-                    fig_rld_chart = visualizations.create_model_leaderboard_chart(sus_model_dict['leaderboard_df'], metric_col="R² Score", title="Model R² Score Comparison")
-                    st.plotly_chart(fig_rld_chart, use_container_width=True, config={'displayModeBar': False})
-
             # Model Metrics Banner
             sm1, sm2, sm3, sm4 = st.columns(4)
             with sm1:
-                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Active Model R² Score</div><div class="kpi-value" style="color: #34d399;">{sus_model_dict['r2']:.3f}</div></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Model R² Score</div><div class="kpi-value" style="color: #34d399;">{sus_model_dict['r2']:.3f}</div></div>""", unsafe_allow_html=True)
             with sm2:
                 st.markdown(f"""<div class="kpi-card"><div class="kpi-title">Mean Absolute Error (MAE)</div><div class="kpi-value" style="color: #60a5fa;">{sus_model_dict['mae']:.3f}</div></div>""", unsafe_allow_html=True)
             with sm3:
