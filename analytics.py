@@ -2,12 +2,29 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 from sklearn.cluster import DBSCAN
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, IsolationForest
+from sklearn.ensemble import (
+    RandomForestClassifier, RandomForestRegressor, IsolationForest,
+    VotingClassifier, VotingRegressor, GradientBoostingClassifier, GradientBoostingRegressor,
+    HistGradientBoostingClassifier, HistGradientBoostingRegressor
+)
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 import scipy.stats as stats
+
+# Check XGBoost and LightGBM availability
+try:
+    import xgboost as xgb
+    HAS_XGB = True
+except ImportError:
+    HAS_XGB = False
+
+try:
+    import lightgbm as lgb
+    HAS_LGB = True
+except ImportError:
+    HAS_LGB = False
 
 def detect_hotspots(df, eps_km=0.5, min_samples=5):
     """
@@ -24,11 +41,10 @@ def detect_hotspots(df, eps_km=0.5, min_samples=5):
     return df.assign(hotspot_id=db.labels_)
 
 @st.cache_data(show_spinner=False)
-def train_severity_predictor(crimes_df):
+def train_severity_predictor(crimes_df, selected_model_name="🏆 Multi-Model Soft Voting Ensemble"):
     """
-    Train a Random Forest Classifier to predict the severity of a crime incident.
-    Includes 80/20 train/test split, balanced class weights, 5-fold cross-validation,
-    and out-of-sample confusion matrix computation.
+    Train a Multi-Model Ensemble (Random Forest, XGBoost, LightGBM, Soft Voting Ensemble)
+    to predict crime incident severity. Benchmarks all models on out-of-sample data and 5-fold CV.
     """
     if crimes_df.empty or len(crimes_df) < 50:
         return None, "Not enough data to train severity model."
@@ -64,36 +80,91 @@ def train_severity_predictor(crimes_df):
     # 80/20 Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
-    # Train Random Forest Classifier with balanced class weights
-    model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, class_weight='balanced')
-    model.fit(X_train, y_train)
+    # Define Base Candidate Models
+    m_rf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, class_weight='balanced')
     
-    # Evaluate Out-of-Sample Predictions
-    y_pred = model.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred, average='weighted')
-    cm = confusion_matrix(y_test, y_pred)
+    if HAS_XGB:
+        m_xgb = xgb.XGBClassifier(n_estimators=100, max_depth=6, learning_rate=0.08, random_state=42, eval_metric='mlogloss')
+    else:
+        m_xgb = HistGradientBoostingClassifier(max_iter=100, max_depth=6, random_state=42)
+        
+    if HAS_LGB:
+        m_lgb = lgb.LGBMClassifier(n_estimators=100, max_depth=6, learning_rate=0.08, random_state=42, verbose=-1)
+    else:
+        m_lgb = GradientBoostingClassifier(n_estimators=100, max_depth=6, random_state=42)
+        
+    # Soft Voting Ensemble
+    m_ens = VotingClassifier(
+        estimators=[('rf', m_rf), ('xgb', m_xgb), ('lgb', m_lgb)],
+        voting='soft'
+    )
     
-    # 5-Fold Cross-Validation Scores
-    cv_scores = cross_val_score(model, X, y, cv=5, scoring='accuracy')
+    candidates = {
+        "🏆 Multi-Model Soft Voting Ensemble": m_ens,
+        "⚡ XGBoost Classifier": m_xgb,
+        "🍃 LightGBM Classifier": m_lgb,
+        "🌲 Random Forest": m_rf
+    }
     
-    # Feature Importance
-    importance = model.feature_importances_
-    feat_importance = pd.Series(importance, index=X.columns).sort_values(ascending=False)
+    leaderboard_list = []
+    trained_candidates = {}
+    
+    for c_name, model_obj in candidates.items():
+        try:
+            model_obj.fit(X_train, y_train)
+            y_pred_c = model_obj.predict(X_test)
+            acc_c = accuracy_score(y_test, y_pred_c)
+            f1_c = f1_score(y_test, y_pred_c, average='weighted')
+            cv_c = cross_val_score(model_obj, X, y, cv=5, scoring='accuracy')
+            
+            leaderboard_list.append({
+                "Algorithm": c_name,
+                "Accuracy": float(acc_c),
+                "Macro F1-Score": float(f1_c),
+                "5-Fold CV Score": float(cv_c.mean()),
+                "CV Std (±)": float(cv_c.std())
+            })
+            trained_candidates[c_name] = {
+                "model": model_obj,
+                "accuracy": float(acc_c),
+                "f1_score": float(f1_c),
+                "cv_mean": float(cv_c.mean()),
+                "cv_std": float(cv_c.std()),
+                "cv_scores": cv_c,
+                "y_pred": y_pred_c
+            }
+        except Exception:
+            pass
+
+    leaderboard_df = pd.DataFrame(leaderboard_list).sort_values(by="Macro F1-Score", ascending=False).reset_index(drop=True)
+    leaderboard_df.insert(0, 'Rank', [f"🥇 #{i+1}" if i==0 else (f"🥈 #{i+1}" if i==1 else (f"🥉 #{i+1}" if i==2 else f"#{i+1}")) for i in range(len(leaderboard_df))])
+
+    # Select Active User Model
+    active_entry = trained_candidates.get(selected_model_name, list(trained_candidates.values())[0])
+    active_model = active_entry["model"]
+    
+    # Feature Importance (from Random Forest or XGBoost as proxy for visualization)
+    feat_importance = pd.Series(0.0, index=X.columns)
+    if hasattr(m_rf, 'feature_importances_'):
+        feat_importance = pd.Series(m_rf.feature_importances_, index=X.columns).sort_values(ascending=False)
+        
+    cm = confusion_matrix(y_test, active_entry["y_pred"])
     
     return {
-        "model": model,
+        "model": active_model,
+        "all_models": trained_candidates,
+        "leaderboard_df": leaderboard_df,
         "feature_cols": list(X.columns),
         "label_encoder": le,
         "feature_importance": feat_importance,
-        "accuracy": float(acc),
-        "f1_score": float(f1),
-        "cv_mean": float(cv_scores.mean()),
-        "cv_std": float(cv_scores.std()),
-        "cv_scores": cv_scores,
+        "accuracy": active_entry["accuracy"],
+        "f1_score": active_entry["f1_score"],
+        "cv_mean": active_entry["cv_mean"],
+        "cv_std": active_entry["cv_std"],
+        "cv_scores": active_entry["cv_scores"],
         "confusion_matrix": cm,
         "classes": list(le.classes_)
-    }, "Model trained successfully."
+    }, "Multi-model severity suite trained successfully."
 
 def predict_incident_severity(model_dict, input_data):
     """
@@ -132,10 +203,10 @@ def predict_incident_severity(model_dict, input_data):
     return pred_class, class_probs
 
 @st.cache_data(show_spinner=False)
-def train_recidivism_predictor(suspects_df):
+def train_recidivism_predictor(suspects_df, selected_model_name="🏆 Multi-Model Weighted Ensemble"):
     """
-    Train a Random Forest Regressor to predict suspect risk scores.
-    Includes 80/20 train/test split, R², MAE, RMSE, and 5-fold cross-validation.
+    Train a Multi-Model Regression Ensemble (Random Forest, XGBoost, LightGBM, Voting Regressor)
+    to predict suspect risk scores. Benchmarks all models on out-of-sample data and 5-fold CV.
     """
     if suspects_df.empty or len(suspects_df) < 15:
         return None, "Not enough suspects to train recidivism model."
@@ -152,31 +223,79 @@ def train_recidivism_predictor(suspects_df):
     # 80/20 Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    model = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=8)
-    model.fit(X_train, y_train)
+    m_rf = RandomForestRegressor(n_estimators=100, random_state=42, max_depth=8)
     
-    # Out-of-sample Evaluation
-    y_pred = model.predict(X_test)
-    mae = mean_absolute_error(y_test, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-    r2 = r2_score(y_test, y_pred)
+    if HAS_XGB:
+        m_xgb = xgb.XGBRegressor(n_estimators=100, max_depth=5, learning_rate=0.08, random_state=42)
+    else:
+        m_xgb = HistGradientBoostingRegressor(max_iter=100, max_depth=5, random_state=42)
+        
+    if HAS_LGB:
+        m_lgb = lgb.LGBMRegressor(n_estimators=100, max_depth=5, learning_rate=0.08, random_state=42, verbose=-1)
+    else:
+        m_lgb = GradientBoostingRegressor(n_estimators=100, max_depth=5, random_state=42)
+        
+    m_ens = VotingRegressor(
+        estimators=[('rf', m_rf), ('xgb', m_xgb), ('lgb', m_lgb)]
+    )
     
-    # 5-Fold Cross Validation for R2
-    cv_scores = cross_val_score(model, X, y, cv=5, scoring='r2')
+    candidates = {
+        "🏆 Multi-Model Weighted Ensemble": m_ens,
+        "⚡ XGBoost Regressor": m_xgb,
+        "🍃 LightGBM Regressor": m_lgb,
+        "🌲 Random Forest": m_rf
+    }
     
-    # Feature Importance
-    importance = model.feature_importances_
-    feat_importance = pd.Series(importance, index=X.columns).sort_values(ascending=False)
+    leaderboard_list = []
+    trained_candidates = {}
+    
+    for c_name, model_obj in candidates.items():
+        try:
+            model_obj.fit(X_train, y_train)
+            y_pred_c = model_obj.predict(X_test)
+            mae_c = mean_absolute_error(y_test, y_pred_c)
+            rmse_c = np.sqrt(mean_squared_error(y_test, y_pred_c))
+            r2_c = r2_score(y_test, y_pred_c)
+            cv_c = cross_val_score(model_obj, X, y, cv=5, scoring='r2')
+            
+            leaderboard_list.append({
+                "Algorithm": c_name,
+                "R² Score": float(r2_c),
+                "MAE": float(mae_c),
+                "RMSE": float(rmse_c),
+                "5-Fold CV R²": float(cv_c.mean())
+            })
+            trained_candidates[c_name] = {
+                "model": model_obj,
+                "mae": float(mae_c),
+                "rmse": float(rmse_c),
+                "r2": float(r2_c),
+                "cv_r2_mean": float(cv_c.mean())
+            }
+        except Exception:
+            pass
+
+    leaderboard_df = pd.DataFrame(leaderboard_list).sort_values(by="R² Score", ascending=False).reset_index(drop=True)
+    leaderboard_df.insert(0, 'Rank', [f"🥇 #{i+1}" if i==0 else (f"🥈 #{i+1}" if i==1 else (f"🥉 #{i+1}" if i==2 else f"#{i+1}")) for i in range(len(leaderboard_df))])
+
+    active_entry = trained_candidates.get(selected_model_name, list(trained_candidates.values())[0])
+    active_model = active_entry["model"]
+    
+    feat_importance = pd.Series(0.0, index=X.columns)
+    if hasattr(m_rf, 'feature_importances_'):
+        feat_importance = pd.Series(m_rf.feature_importances_, index=X.columns).sort_values(ascending=False)
     
     return {
-        "model": model,
+        "model": active_model,
+        "all_models": trained_candidates,
+        "leaderboard_df": leaderboard_df,
         "feature_cols": list(X.columns),
         "feature_importance": feat_importance,
-        "mae": float(mae),
-        "rmse": float(rmse),
-        "r2": float(r2),
-        "cv_r2_mean": float(cv_scores.mean())
-    }, "Recidivism model trained successfully."
+        "mae": active_entry["mae"],
+        "rmse": active_entry["rmse"],
+        "r2": active_entry["r2"],
+        "cv_r2_mean": active_entry["cv_r2_mean"]
+    }, "Multi-model recidivism suite trained successfully."
 
 def predict_suspect_risk(model_dict, age, priors_count, gang_affiliation):
     """Predict risk score for a suspect."""

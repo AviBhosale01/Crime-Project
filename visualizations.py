@@ -925,3 +925,33 @@ def create_patrol_optimization_chart(patrol_df):
     )
     return fig
 
+def create_model_leaderboard_chart(leaderboard_df, metric_col="Macro F1-Score", title="Model Performance Leaderboard"):
+    """
+    Render a horizontal bar chart comparing multi-model performance metrics (F1-score, Accuracy, or R²).
+    """
+    if leaderboard_df.empty or metric_col not in leaderboard_df.columns:
+        return go.Figure()
+        
+    df_sorted = leaderboard_df.sort_values(by=metric_col, ascending=True).copy()
+    
+    fig = px.bar(
+        df_sorted,
+        x=metric_col,
+        y='Algorithm',
+        orientation='h',
+        color=metric_col,
+        color_continuous_scale='Tealgrn',
+        text_auto='.3f',
+        title=f"<b>{title}</b>"
+    )
+    fig.update_traces(textposition='outside')
+    fig.update_layout(
+        height=280,
+        margin=dict(l=20, r=40, t=40, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        coloraxis_showscale=False
+    )
+    return fig
+
+
