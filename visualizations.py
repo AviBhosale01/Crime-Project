@@ -357,7 +357,7 @@ def create_network_graph(suspects_df, connections_df, highlight_suspect_id=None,
     deg_centrality = nx.degree_centrality(G)
     bet_centrality = nx.betweenness_centrality(G)
     
-    pos = nx.spring_layout(G, k=0.55, iterations=60, seed=42)
+    pos = nx.spring_layout(G, k=0.85, iterations=100, seed=42)
     
     # ---------------- Edge Traces by Relation Type ----------------
     relation_colors = {

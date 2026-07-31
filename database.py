@@ -63,12 +63,14 @@ def init_db(force_recreate=False):
             cursor.execute("SELECT COUNT(*) FROM crimes")
             crime_count = cursor.fetchone()[0]
             
-            # Rebuild if missing dynamic severity variance
+            # Rebuild if missing dynamic severity variance or if suspect_connections count is overly dense
             cursor.execute("SELECT COUNT(*) FROM crimes WHERE severity = 'Low' AND crime_type = 'Homicide'")
             low_homicides = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM suspect_connections")
+            con_count = cursor.fetchone()[0]
             conn.close()
             
-            if suspect_count < 2000 or crime_count != 3095 or low_homicides == 0:
+            if suspect_count < 2000 or crime_count != 3095 or low_homicides == 0 or con_count > 120:
                 needs_rebuild = True
         except Exception:
             needs_rebuild = True
@@ -381,35 +383,78 @@ def seed_data(conn):
     """, crimes_list)
     conn.commit()
     
-    # 4. Seed Suspect Connections
+    # 4. Seed Authentic Criminal Network Connections (~50-65 high-value realistic links)
     connections = set()
-    # Group random suspects into cliques
-    clique_gangs = [
-        ("Pune Local Boys", suspect_ids[10:30]),
-        ("Shivaji Nagar Syndicate", suspect_ids[100:120]),
-        ("Koregaon Park Cartel", suspect_ids[250:270]),
-        ("Hinjawadi Hackers", suspect_ids[400:415]),
-        ("D-Company Gang", suspect_ids[550:575]),
-        ("Chhota Rajan Gang", suspect_ids[700:725])
-    ]
     
-    for gang_name, members in clique_gangs:
-        for i in range(len(members)):
-            for j in range(i+1, len(members)):
-                if np.random.rand() < 0.65:
-                    connections.add((members[i], members[j], "Gang Member", int(np.random.randint(3, 6))))
-                    
-    # General random connections (accomplices, co-arrestees)
-    for _ in range(150):
-        s_a = int(np.random.choice(suspect_ids))
-        s_b = int(np.random.choice(suspect_ids))
-        if s_a != s_b:
+    # Query suspects grouped by gang syndicate directly from the seeded suspects database table
+    cursor.execute("SELECT id, name, gang_affiliation, risk_score FROM suspects WHERE gang_affiliation != 'None'")
+    gang_rows = cursor.fetchall()
+    
+    gang_groups = {}
+    for r in gang_rows:
+        g_name = r['gang_affiliation']
+        if g_name not in gang_groups:
+            gang_groups[g_name] = []
+        gang_groups[g_name].append(dict(r))
+        
+    gang_leaders = {}
+    # For each syndicate, select the top-risk suspect as the Gang Leader / Hub
+    for g_name, s_list in gang_groups.items():
+        if len(s_list) >= 4:
+            sorted_s = sorted(s_list, key=lambda x: x['risk_score'], reverse=True)
+            leader = sorted_s[0]
+            gang_leaders[g_name] = leader['id']
+            
+            # Connect leader to top lieutenants/associates (star topology)
+            lieutenants = sorted_s[1:6]
+            for lt in lieutenants:
+                pair = (min(leader['id'], lt['id']), max(leader['id'], lt['id']))
+                connections.add((pair[0], pair[1], "Gang Member", int(np.random.randint(4, 6))))
+                
+            # Interconnect a few lieutenants (inner clique links)
+            for i in range(len(lieutenants)):
+                for j in range(i + 1, min(i + 3, len(lieutenants))):
+                    if np.random.rand() < 0.4:
+                        pair = (min(lieutenants[i]['id'], lieutenants[j]['id']), max(lieutenants[i]['id'], lieutenants[j]['id']))
+                        connections.add((pair[0], pair[1], "Gang Member", int(np.random.randint(3, 5))))
+
+    # Co-Arrestee & Accomplice links: Connect suspects co-occurring in the same crime incident records
+    cursor.execute("""
+        SELECT suspect_id, district_id, crime_type 
+        FROM crimes 
+        WHERE suspect_id IS NOT NULL 
+        LIMIT 250
+    """)
+    crime_rows = cursor.fetchall()
+    
+    co_occurrences = {}
+    for r in crime_rows:
+        key = (r['district_id'], r['crime_type'])
+        if key not in co_occurrences:
+            co_occurrences[key] = []
+        co_occurrences[key].append(r['suspect_id'])
+        
+    for key, s_list in co_occurrences.items():
+        unique_s = list(set(s_list))
+        if len(unique_s) >= 2:
+            for i in range(min(2, len(unique_s) - 1)):
+                s_a, s_b = unique_s[i], unique_s[i + 1]
+                if s_a != s_b:
+                    pair = (min(s_a, s_b), max(s_a, s_b))
+                    if not any(c[0] == pair[0] and c[1] == pair[1] for c in connections):
+                        rel = np.random.choice(["Accomplice", "Co-arrestee"], p=[0.6, 0.4])
+                        connections.add((pair[0], pair[1], rel, int(np.random.randint(2, 5))))
+
+    # Inter-Gang Bridge Connectors (3-4 bridge links between syndicate leaders/lieutenants)
+    leader_ids = list(gang_leaders.values())
+    if len(leader_ids) >= 2:
+        for i in range(len(leader_ids) - 1):
+            s_a, s_b = leader_ids[i], leader_ids[i + 1]
             pair = (min(s_a, s_b), max(s_a, s_b))
             if not any(c[0] == pair[0] and c[1] == pair[1] for c in connections):
-                rel = np.random.choice(["Accomplice", "Co-arrestee", "Relative"], p=[0.5, 0.4, 0.1])
-                strength = int(np.random.randint(1, 4))
-                connections.add((pair[0], pair[1], rel, strength))
-                
+                rel = np.random.choice(["Accomplice", "Co-arrestee", "Relative"], p=[0.4, 0.4, 0.2])
+                connections.add((pair[0], pair[1], rel, int(np.random.randint(3, 5))))
+
     cursor.executemany("""
     INSERT INTO suspect_connections (suspect_a, suspect_b, relation_type, strength)
     VALUES (?, ?, ?, ?)
