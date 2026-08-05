@@ -10,6 +10,7 @@
 ![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=flat-square&logo=google-gemini&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white)
 ![NewsAPI](https://img.shields.io/badge/NewsAPI-000000?style=flat-square&logo=newspaper&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Operational-brightgreen?style=flat-square)
 
 An enterprise-grade, AI-powered Geospatial Analytics, Suspect Risk Profiling, Decision-Support System, and Criminal Social Network Linkage platform built specifically for **Pune, Maharashtra, India**.
 
