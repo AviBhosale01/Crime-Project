@@ -4,6 +4,8 @@ import numpy as np
 from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
+import os
+import base64
 
 import database
 import analytics
@@ -204,7 +206,17 @@ nav_options = [
     "💬 AI Intel Chatbot",
     "📰 Crime News"
 ]
-selected_page = st.sidebar.radio("Navigation", nav_options)
+
+# Handle programmatic page redirection (e.g. from floating assistant widget)
+if "requested_page" in st.session_state and st.session_state["requested_page"]:
+    req_p = st.session_state.pop("requested_page")
+    if req_p in nav_options:
+        st.session_state["nav_radio"] = req_p
+
+if "nav_radio" not in st.session_state:
+    st.session_state["nav_radio"] = "📊 Command Dashboard"
+
+selected_page = st.sidebar.radio("Navigation", nav_options, key="nav_radio")
 
 st.sidebar.markdown("<hr style='border-top: 1px solid #1f2937; margin: 15px 0;'>", unsafe_allow_html=True)
 st.sidebar.subheader("Filter Workspace")
@@ -2397,3 +2409,67 @@ st.markdown("""
     </a>
 </div>
 """, unsafe_allow_html=True)
+
+# --- Floating 3D Police Assistant Widget (Bottom-Right Corner) ---
+police_icon_path = os.path.join(os.path.dirname(__file__), "assets", "police-3d-icon.png")
+police_icon_b64 = ""
+if os.path.exists(police_icon_path):
+    with open(police_icon_path, "rb") as img_f:
+        police_icon_b64 = base64.b64encode(img_f.read()).decode("utf-8")
+
+if police_icon_b64 and selected_page != "💬 AI Intel Chatbot":
+    st.markdown(f"""
+    <style>
+    div[data-testid="stButton"]:has(button[key="btn_floating_ai_assistant"]),
+    div:has(> button[key="btn_floating_ai_assistant"]),
+    div[data-testid="stButton"]:has(button[aria-label="Open AI Intel Assistant Chatbot"]) {{
+        position: fixed !important;
+        bottom: 28px !important;
+        right: 28px !important;
+        z-index: 9999999 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 68px !important;
+        height: 68px !important;
+    }}
+    button[aria-label="Open AI Intel Assistant Chatbot"],
+    button[key="btn_floating_ai_assistant"] {{
+        position: fixed !important;
+        bottom: 28px !important;
+        right: 28px !important;
+        z-index: 9999999 !important;
+        width: 68px !important;
+        height: 68px !important;
+        min-width: 68px !important;
+        min-height: 68px !important;
+        border-radius: 50% !important;
+        border: 2.5px solid rgba(96, 165, 250, 0.9) !important;
+        background: radial-gradient(circle at 35% 35%, #1e40af, #0f172a) !important;
+        background-image: url('data:image/png;base64,{police_icon_b64}') !important;
+        background-size: 48px 48px !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        box-shadow: 0 8px 30px rgba(37, 99, 235, 0.6), 0 0 20px rgba(59, 130, 246, 0.5) !important;
+        cursor: pointer !important;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }}
+    button[aria-label="Open AI Intel Assistant Chatbot"]:hover,
+    button[key="btn_floating_ai_assistant"]:hover {{
+        transform: scale(1.14) translateY(-4px) !important;
+        border-color: #93c5fd !important;
+        box-shadow: 0 14px 40px rgba(37, 99, 235, 0.9), 0 0 30px rgba(96, 165, 250, 0.8) !important;
+    }}
+    button[aria-label="Open AI Intel Assistant Chatbot"] p,
+    button[key="btn_floating_ai_assistant"] p {{
+        display: none !important;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+    
+    if st.button(" ", key="btn_floating_ai_assistant", help="Open AI Intel Assistant Chatbot"):
+        st.session_state["requested_page"] = "💬 AI Intel Chatbot"
+        st.rerun()
