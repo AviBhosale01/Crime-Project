@@ -2432,8 +2432,8 @@ if police_icon_b64 and selected_page != "💬 AI Intel Chatbot":
     <style>
     #floating-police-assistant-wrapper {{
         position: fixed !important;
-        bottom: 28px !important;
-        right: 28px !important;
+        bottom: 22px !important;
+        right: 22px !important;
         z-index: 2147483647 !important;
         display: block !important;
         text-decoration: none !important;
@@ -2441,47 +2441,47 @@ if police_icon_b64 and selected_page != "💬 AI Intel Chatbot":
     
     #floating-police-assistant-btn {{
         position: relative !important;
-        width: 68px !important;
-        height: 68px !important;
+        width: 52px !important;
+        height: 52px !important;
         border-radius: 50% !important;
         background: radial-gradient(circle at 35% 35%, #1e40af, #0f172a) !important;
-        border: 2.5px solid #60a5fa !important;
-        box-shadow: 0 8px 30px rgba(37, 99, 235, 0.65), 0 0 20px rgba(59, 130, 246, 0.5) !important;
+        border: 2px solid #60a5fa !important;
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6), 0 0 15px rgba(59, 130, 246, 0.45) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         cursor: pointer !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease !important;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease !important;
         text-decoration: none !important;
     }}
     
     #floating-police-assistant-btn:hover {{
-        transform: scale(1.15) translateY(-5px) !important;
+        transform: scale(1.12) translateY(-3px) !important;
         border-color: #93c5fd !important;
-        box-shadow: 0 14px 40px rgba(37, 99, 235, 0.9), 0 0 30px rgba(96, 165, 250, 0.8) !important;
+        box-shadow: 0 10px 28px rgba(37, 99, 235, 0.85), 0 0 22px rgba(96, 165, 250, 0.7) !important;
     }}
     
     #floating-police-assistant-img {{
-        width: 52px !important;
-        height: 52px !important;
+        width: 38px !important;
+        height: 38px !important;
         object-fit: contain !important;
         pointer-events: none !important;
-        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)) !important;
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45)) !important;
     }}
     
     #floating-ai-badge {{
         position: absolute !important;
-        top: -4px !important;
-        right: -4px !important;
+        top: -3px !important;
+        right: -3px !important;
         background: linear-gradient(135deg, #ef4444, #dc2626) !important;
         color: #ffffff !important;
-        font-size: 0.65rem !important;
+        font-size: 0.55rem !important;
         font-weight: 800 !important;
         font-family: 'Outfit', sans-serif !important;
-        padding: 2px 6px !important;
-        border-radius: 10px !important;
+        padding: 1px 5px !important;
+        border-radius: 8px !important;
         border: 1.5px solid #1e293b !important;
-        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.6) !important;
+        box-shadow: 0 2px 5px rgba(239, 68, 68, 0.6) !important;
         letter-spacing: 0.5px !important;
     }}
 
