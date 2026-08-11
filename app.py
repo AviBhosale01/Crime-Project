@@ -207,7 +207,17 @@ nav_options = [
     "📰 Crime News"
 ]
 
-# Handle programmatic page redirection (e.g. from floating assistant widget)
+# Handle programmatic query param redirection (e.g. from floating assistant widget)
+if hasattr(st, "query_params") and "page" in st.query_params:
+    qp = str(st.query_params.get("page", "")).lower()
+    if qp in ["chatbot", "ai_chatbot", "ai_intel_chatbot"]:
+        st.session_state["nav_radio"] = "💬 AI Intel Chatbot"
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
+
+# Handle programmatic page redirection from session state
 if "requested_page" in st.session_state and st.session_state["requested_page"]:
     req_p = st.session_state.pop("requested_page")
     if req_p in nav_options:
@@ -2420,56 +2430,83 @@ if os.path.exists(police_icon_path):
 if police_icon_b64 and selected_page != "💬 AI Intel Chatbot":
     st.markdown(f"""
     <style>
-    div[data-testid="stButton"]:has(button[key="btn_floating_ai_assistant"]),
-    div:has(> button[key="btn_floating_ai_assistant"]),
-    div[data-testid="stButton"]:has(button[aria-label="Open AI Intel Assistant Chatbot"]) {{
+    #floating-police-assistant-wrapper {{
         position: fixed !important;
         bottom: 28px !important;
         right: 28px !important;
-        z-index: 9999999 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 68px !important;
-        height: 68px !important;
+        z-index: 2147483647 !important;
+        display: block !important;
+        text-decoration: none !important;
     }}
-    button[aria-label="Open AI Intel Assistant Chatbot"],
-    button[key="btn_floating_ai_assistant"] {{
-        position: fixed !important;
-        bottom: 28px !important;
-        right: 28px !important;
-        z-index: 9999999 !important;
+    
+    #floating-police-assistant-btn {{
+        position: relative !important;
         width: 68px !important;
         height: 68px !important;
-        min-width: 68px !important;
-        min-height: 68px !important;
         border-radius: 50% !important;
-        border: 2.5px solid rgba(96, 165, 250, 0.9) !important;
         background: radial-gradient(circle at 35% 35%, #1e40af, #0f172a) !important;
-        background-image: url('data:image/png;base64,{police_icon_b64}') !important;
-        background-size: 48px 48px !important;
-        background-repeat: no-repeat !important;
-        background-position: center !important;
-        box-shadow: 0 8px 30px rgba(37, 99, 235, 0.6), 0 0 20px rgba(59, 130, 246, 0.5) !important;
-        cursor: pointer !important;
-        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease !important;
+        border: 2.5px solid #60a5fa !important;
+        box-shadow: 0 8px 30px rgba(37, 99, 235, 0.65), 0 0 20px rgba(59, 130, 246, 0.5) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 0 !important;
+        cursor: pointer !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease !important;
+        text-decoration: none !important;
     }}
-    button[aria-label="Open AI Intel Assistant Chatbot"]:hover,
-    button[key="btn_floating_ai_assistant"]:hover {{
-        transform: scale(1.14) translateY(-4px) !important;
+    
+    #floating-police-assistant-btn:hover {{
+        transform: scale(1.15) translateY(-5px) !important;
         border-color: #93c5fd !important;
         box-shadow: 0 14px 40px rgba(37, 99, 235, 0.9), 0 0 30px rgba(96, 165, 250, 0.8) !important;
     }}
-    button[aria-label="Open AI Intel Assistant Chatbot"] p,
-    button[key="btn_floating_ai_assistant"] p {{
-        display: none !important;
+    
+    #floating-police-assistant-img {{
+        width: 52px !important;
+        height: 52px !important;
+        object-fit: contain !important;
+        pointer-events: none !important;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)) !important;
+    }}
+    
+    #floating-ai-badge {{
+        position: absolute !important;
+        top: -4px !important;
+        right: -4px !important;
+        background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+        color: #ffffff !important;
+        font-size: 0.65rem !important;
+        font-weight: 800 !important;
+        font-family: 'Outfit', sans-serif !important;
+        padding: 2px 6px !important;
+        border-radius: 10px !important;
+        border: 1.5px solid #1e293b !important;
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.6) !important;
+        letter-spacing: 0.5px !important;
+    }}
+
+    @keyframes pulse-ring {{
+        0% {{ transform: scale(0.95); opacity: 0.8; }}
+        50% {{ transform: scale(1.18); opacity: 0; }}
+        100% {{ transform: scale(0.95); opacity: 0; }}
+    }}
+    
+    .floating-pulse-aura {{
+        position: absolute !important;
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 50% !important;
+        border: 2px solid rgba(96, 165, 250, 0.6) !important;
+        animation: pulse-ring 2.5s infinite ease-out !important;
+        pointer-events: none !important;
     }}
     </style>
-    """, unsafe_allow_html=True)
     
-    if st.button(" ", key="btn_floating_ai_assistant", help="Open AI Intel Assistant Chatbot"):
-        st.session_state["requested_page"] = "💬 AI Intel Chatbot"
-        st.rerun()
+    <div id="floating-police-assistant-wrapper">
+        <a href="?page=chatbot" target="_self" id="floating-police-assistant-btn" title="Open AI Intel Assistant Chatbot">
+            <div class="floating-pulse-aura"></div>
+            <img id="floating-police-assistant-img" src="data:image/png;base64,{police_icon_b64}" alt="AI Intel Officer" />
+            <span id="floating-ai-badge">AI</span>
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
