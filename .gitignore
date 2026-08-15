@@ -22,3 +22,7 @@ env/
 
 # Security Passkeys
 config_keys.py
+
+# GSD Agent & Planning
+.agent/
+.planning/
