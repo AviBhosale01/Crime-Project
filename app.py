@@ -1265,6 +1265,10 @@ elif selected_page == "📝 Intel Entry (CRUD)":
             st.warning("Please enter the correct passkey to unlock the forms.")
         st.stop()
     
+    # Render persistent success notification if an action just occurred
+    if "crud_success_msg" in st.session_state and st.session_state["crud_success_msg"]:
+        st.success(st.session_state.pop("crud_success_msg"))
+    
     tab_add_crime, tab_add_suspect, tab_add_rel = st.tabs([
         "⚠️ Report Crime Incident",
         "👤 Register New Suspect",
@@ -1314,8 +1318,8 @@ elif selected_page == "📝 Intel Entry (CRUD)":
                     status=c_status,
                     suspect_id=actual_suspect
                 )
-                st.cache_data.clear() # Clear cache to instantly reload database records
-                st.success(f"Incident reported successfully! Registered Crime ID: {new_id}")
+                st.cache_data.clear() # Clear cache to reload database records
+                st.session_state["crud_success_msg"] = f"🚨 Incident reported successfully! Registered Crime ID: **{new_id}** ({c_type} in {dist_choices.get(c_district_id, 'Area')})"
                 st.rerun()
                 
     # 2. Register Suspect
@@ -1348,8 +1352,8 @@ elif selected_page == "📝 Intel Entry (CRUD)":
                         priors=int(s_priors),
                         risk_score=base_risk
                     )
-                    st.cache_data.clear() # Clear cache to instantly reload database records
-                    st.success(f"Suspect profile registered! Database ID: {new_id}")
+                    st.cache_data.clear() # Clear cache to reload database records
+                    st.session_state["crud_success_msg"] = f"👤 Suspect profile registered successfully! Assigned Suspect ID: **{new_id}** (Name: **{s_name.strip()}**, Syndicate: **{s_gang}**, Risk: **{base_risk:.2f}**)"
                     st.rerun()
                     
     # 3. Model Criminal Associations
@@ -1378,13 +1382,17 @@ elif selected_page == "📝 Intel Entry (CRUD)":
                 else:
                     database.add_connection(s_a=int(s_a), s_b=int(s_b), rel_type=rel_type, strength=int(strength))
                     st.cache_data.clear() # Clear cache to reload database records
-                    st.success(f"Criminal link modeled successfully between Suspect {s_a} and Suspect {s_b}!")
+                    st.session_state["crud_success_msg"] = f"🔗 Criminal link modeled successfully between Suspect ID **{s_a}** and Suspect ID **{s_b}** ({rel_type})!"
                     st.rerun()
 
 # --- Page: View Data ---
 elif selected_page == "📂 View Data":
     st.markdown("## 📂 Database Records Viewer & Editor")
     st.write("Explore, search, edit, delete, and download raw tables from the Pune Crime Intelligence database.")
+    
+    # Render persistent success notification if changes were saved
+    if "view_data_success_msg" in st.session_state and st.session_state["view_data_success_msg"]:
+        st.success(st.session_state.pop("view_data_success_msg"))
     
     # Passkey protection
     if not VIEW_DATA_KEY:
@@ -1608,7 +1616,7 @@ elif selected_page == "📂 View Data":
                         sus_id = int(filtered_sus.iloc[row_idx]["id"])
                         database.delete_suspect(sus_id)
                         
-                st.success("Suspect changes saved successfully!")
+                st.session_state["view_data_success_msg"] = "✅ Suspect changes saved successfully to database!"
                 st.cache_data.clear()
                 st.rerun()
                 
@@ -1750,7 +1758,7 @@ elif selected_page == "📂 View Data":
                         crime_id = int(filtered_cri.iloc[row_idx]["id"])
                         database.delete_crime(crime_id)
                         
-                st.success("Crime incident changes saved successfully!")
+                st.session_state["view_data_success_msg"] = "✅ Crime incident changes saved successfully to database!"
                 st.cache_data.clear()
                 st.rerun()
                 
