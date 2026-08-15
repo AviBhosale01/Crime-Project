@@ -1314,8 +1314,9 @@ elif selected_page == "📝 Intel Entry (CRUD)":
                     status=c_status,
                     suspect_id=actual_suspect
                 )
-                st.success(f"Incident reported successfully! Registered ID: {new_id}")
-                st.cache_data.clear() # Clear streamlit cache to reload new data
+                st.cache_data.clear() # Clear cache to instantly reload database records
+                st.success(f"Incident reported successfully! Registered Crime ID: {new_id}")
+                st.rerun()
                 
     # 2. Register Suspect
     with tab_add_suspect:
@@ -1324,11 +1325,12 @@ elif selected_page == "📝 Intel Entry (CRUD)":
             col_s1, col_s2 = st.columns(2)
             
             with col_s1:
-                s_name = st.text_input("Full Name", placeholder="e.g. John Doe")
+                s_name = st.text_input("Full Name", placeholder="e.g. Rahul Shinde")
                 s_age = st.number_input("Age", min_value=12, max_value=100, value=25)
                 
             with col_s2:
-                s_gang = st.selectbox("Gang Affiliation", ["None", "Pune Local Boys", "Shivaji Nagar Syndicate", "Koregaon Park Cartel", "Hinjawadi Hackers", "D-Company Gang", "Chhota Rajan Gang"])
+                available_gangs = ["None"] + sorted([g for g in df_suspects['gang_affiliation'].unique() if g and g != "None"])
+                s_gang = st.selectbox("Gang Affiliation", available_gangs)
                 s_priors = st.number_input("Prior Arrests Count", min_value=0, max_value=100, value=0)
                 
             submit_suspect = st.form_submit_button("Register Suspect")
@@ -1340,14 +1342,15 @@ elif selected_page == "📝 Intel Entry (CRUD)":
                     # Calculate baseline risk score dynamically using ML or formula
                     base_risk = float(np.clip((s_priors * 0.15) + (0.2 if s_gang != "None" else 0) + 0.1, 0.1, 0.95))
                     new_id = database.add_suspect(
-                        name=s_name,
+                        name=s_name.strip(),
                         age=int(s_age),
                         gang=s_gang,
                         priors=int(s_priors),
                         risk_score=base_risk
                     )
+                    st.cache_data.clear() # Clear cache to instantly reload database records
                     st.success(f"Suspect profile registered! Database ID: {new_id}")
-                    st.cache_data.clear() # Clear streamlit cache
+                    st.rerun()
                     
     # 3. Model Criminal Associations
     with tab_add_rel:
@@ -1374,8 +1377,9 @@ elif selected_page == "📝 Intel Entry (CRUD)":
                     st.error("Cannot create association connection to self.")
                 else:
                     database.add_connection(s_a=int(s_a), s_b=int(s_b), rel_type=rel_type, strength=int(strength))
+                    st.cache_data.clear() # Clear cache to reload database records
                     st.success(f"Criminal link modeled successfully between Suspect {s_a} and Suspect {s_b}!")
-                    st.cache_data.clear() # Clear streamlit cache
+                    st.rerun()
 
 # --- Page: View Data ---
 elif selected_page == "📂 View Data":
@@ -1427,13 +1431,19 @@ elif selected_page == "📂 View Data":
         story.append(Paragraph(title, title_style))
         story.append(Spacer(1, 10))
         
+        if df.empty:
+            story.append(Paragraph("No records found matching the specified query or filter criteria.", styles['Normal']))
+            doc.build(story)
+            buffer.seek(0)
+            return buffer.getvalue()
+            
         # Limit to 500 rows to avoid massive page size
         preview_df = df.head(500)
         data = [list(preview_df.columns)]
         for _, row in preview_df.iterrows():
             data.append([str(val) for val in row.values])
             
-        col_width = (792 - 40) / len(preview_df.columns)
+        col_width = (792 - 40) / max(1, len(preview_df.columns))
         t = Table(data, colWidths=[col_width]*len(preview_df.columns))
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#111827")),
@@ -1456,9 +1466,23 @@ elif selected_page == "📂 View Data":
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
+        import io
+        
+        if df.empty:
+            fig, ax = plt.subplots(figsize=(8, 2))
+            ax.axis('off')
+            ax.text(0.5, 0.5, "No records matching search or filter criteria.", 
+                    horizontalalignment='center', verticalalignment='center', 
+                    fontsize=12, color='#4B5563', weight='bold')
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+            plt.close(fig)
+            buf.seek(0)
+            return buf.getvalue()
+            
         # Render top 50 rows in image for readability
         preview_df = df.head(50)
-        fig, ax = plt.subplots(figsize=(14, len(preview_df) * 0.3 + 1.5))
+        fig, ax = plt.subplots(figsize=(14, max(2.5, len(preview_df) * 0.3 + 1.5)))
         ax.axis('tight')
         ax.axis('off')
         
@@ -1481,7 +1505,6 @@ elif selected_page == "📂 View Data":
                 
         plt.title(f"{title} (Showing top {len(preview_df)} records)", fontsize=14, color='#111827', weight='bold', pad=20)
         
-        import io
         buf = io.BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
         plt.close(fig)

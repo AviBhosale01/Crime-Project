@@ -52,30 +52,29 @@ def get_dynamic_severity(crime_type, hour, poverty_index=0.15):
 def init_db(force_recreate=False):
     """Initialize the database and populate it with realistic seed data if empty or forced."""
     db_exists = os.path.exists(DB_PATH)
-    needs_rebuild = False
+    needs_seed = False
     
-    if db_exists:
+    if db_exists and not force_recreate:
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM suspects")
-            suspect_count = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM crimes")
-            crime_count = cursor.fetchone()[0]
-            
-            # Rebuild if missing dynamic severity variance or if suspect_connections count is overly dense
-            cursor.execute("SELECT COUNT(*) FROM crimes WHERE severity = 'Low' AND crime_type = 'Homicide'")
-            low_homicides = cursor.fetchone()[0]
-            cursor.execute("SELECT COUNT(*) FROM suspect_connections")
-            con_count = cursor.fetchone()[0]
+            # Check if all required tables exist
+            cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('districts', 'suspects', 'crimes', 'suspect_connections')")
+            table_count = cursor.fetchone()[0]
+            if table_count < 4:
+                needs_seed = True
+            else:
+                cursor.execute("SELECT COUNT(*) FROM suspects")
+                suspect_count = cursor.fetchone()[0]
+                if suspect_count == 0:
+                    needs_seed = True
             conn.close()
-            
-            if suspect_count < 2000 or crime_count != 3095 or low_homicides == 0 or con_count > 120:
-                needs_rebuild = True
         except Exception:
-            needs_rebuild = True
-            
-    if (force_recreate or needs_rebuild) and os.path.exists(DB_PATH):
+            needs_seed = True
+    else:
+        needs_seed = True
+        
+    if force_recreate and os.path.exists(DB_PATH):
         try:
             os.remove(DB_PATH)
         except Exception:
@@ -83,6 +82,10 @@ def init_db(force_recreate=False):
             
     conn = get_connection()
     cursor = conn.cursor()
+    
+    if not needs_seed and not force_recreate:
+        conn.close()
+        return
     
     # Create tables
     cursor.execute("""
