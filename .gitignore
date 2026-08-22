@@ -23,6 +23,8 @@ env/
 # Security Passkeys
 config_keys.py
 
-# GSD Agent & Planning
+# Environment & IDE Metadata
 .agent/
+.agents/
 .planning/
+.gemini/
