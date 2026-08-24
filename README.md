@@ -178,6 +178,25 @@ erDiagram
 
 ---
 
+## 📁 Repository & Modular Architecture Structure
+
+```text
+├── app.py                      # Application Orchestrator & Router Entry Point
+├── database.py                 # Core SQLite Database Driver & CRUD Methods
+├── analytics.py                # Machine Learning, Predictive & Statistical Models
+├── visualizations.py           # Plotly Interactive Charting & NetworkX Visuals
+├── requirements.txt            # Python Dependencies Specification
+├── crime_analytics.db          # Embedded SQLite Relational Database Engine
+└── src/                        # Full-Stack Modular Source Directory
+    ├── core/                   # Global Config & Cached Data Loaders
+    ├── services/               # Multi-Provider LLM & NewsAPI Integrations
+    ├── utils/                  # UI Themes, CSS Injections & Document Exporters
+    ├── components/             # Reusable UI Widgets, Header & Dynamic Sidebar
+    └── views/                  # Dedicated Tactical Page Views
+```
+
+---
+
 ## 🚀 Quickstart Installation Guide
 
 ### Step 1: Clone the Repository
