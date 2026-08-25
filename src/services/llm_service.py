@@ -2,6 +2,7 @@
 Multi-Provider LLM Integration Service (Gemini, OpenAI, Groq, OpenRouter, NVIDIA NIM)
 Text-to-SQL Engine and Intelligence Synthesis
 """
+import re
 from datetime import datetime
 import pandas as pd
 import database
@@ -23,7 +24,7 @@ The database is SQLite. The schema has 4 tables:
 4. suspect_connections (suspect_a, suspect_b, relation_type, strength)
 
 Your task is to translate the user's natural language question into a single valid SQLite SELECT query.
-Return ONLY the SQL query inside a markdown code block starting with `sql and ending with `.
+Return ONLY the SQL query inside a markdown code block starting with ```sql and ending with ```.
 Do not write any explanation or intro/outro. Only SELECT queries are permitted.
 
 If the question is a greeting, time/date query, general conversational message, or cannot be answered by querying the database, respond with exactly:
@@ -63,13 +64,27 @@ NO_SQL
         response_text = resp.choices[0].message.content
 
     response_text = response_text.strip()
-    sql_query = None
-    if "NO_SQL" not in response_text and "`sql" in response_text:
-        start = response_text.find("`sql") + 6
-        end = response_text.find("`", start)
-        sql_query = response_text[start:end].strip()
-    elif "NO_SQL" not in response_text and "SELECT" in response_text.upper():
-        sql_query = response_text
+    if "NO_SQL" in response_text:
+        return None
+
+    # Robust regex extraction of SQL inside ```sql ... ``` or ``` ... ``` code blocks
+    code_block_match = re.search(r"```(?:sql)?\s*([\s\S]*?)\s*```", response_text, re.IGNORECASE)
+    if code_block_match:
+        sql_query = code_block_match.group(1).strip()
+    else:
+        # Fallback: Find where SELECT or WITH begins
+        select_match = re.search(r"(SELECT[\s\S]*|WITH[\s\S]*)", response_text, re.IGNORECASE)
+        if select_match:
+            sql_query = select_match.group(1).strip()
+        else:
+            sql_query = response_text
+
+    # Clean any trailing markdown or quotes
+    sql_query = sql_query.strip("` \n\r;") + ";"
+
+    # Self-healing if first character 'S' was somehow dropped by model or prefix
+    if sql_query.upper().startswith("ELECT "):
+        sql_query = "S" + sql_query
 
     return sql_query
 
@@ -77,11 +92,11 @@ def execute_safe_query(sql_query: str):
     """
     Safely execute a read-only SQL query against the SQLite database.
     """
-    if not sql_query:
+    if not sql_query or sql_query == "NO_SQL":
         return None, None, None
 
     cleaned_sql = sql_query.upper().strip()
-    forbidden_words = ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE", "CREATE", "REPLACE"]
+    forbidden_words = ["DROP ", "DELETE ", "UPDATE ", "INSERT ", "ALTER ", "TRUNCATE ", "CREATE ", "REPLACE "]
     if any(w in cleaned_sql for w in forbidden_words) or not (cleaned_sql.startswith("SELECT") or cleaned_sql.startswith("WITH")):
         return None, None, "Security Policy Error: Non-read-only query blocked."
 
